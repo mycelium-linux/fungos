@@ -1,11 +1,12 @@
 # Mycelium owner-package qualification
 
-Status: genuine owner packages passed the isolated install/enrollment/repair,
-Debian lifecycle and reboot gates below on 2026-10-09. Personal SSH access and
-the signed-repository update engine remain unverified; this is not a complete
-operational release image qualification. Unibus is excluded pending its
-independent licensing
-decision. Baseline installer evidence is in
+The historical runs below qualify genuine Mycelium packages in isolated guests,
+not the complete operational release image. Later personal SSH and signed-engine
+results are recorded in [signed APT evidence](MYCELIUM-SIGNED-APT-QUALIFICATION.md)
+and [published qualification](../release/PUBLIC-QUALIFICATION.md).
+Unibus's owner license is now confirmed; its independent package/source evidence
+is in [Unibus notice evidence](../release/UNIBUS-NOTICES.md). New combined-image
+results must be recorded separately. Baseline installer evidence is in
 [../installer/QUALIFICATION.md](../installer/QUALIFICATION.md).
 
 Run on a fresh disposable Linux/QEMU disk, not Agora's host rootfs or any fleet
@@ -78,6 +79,22 @@ symlink inputs. The proof refuses a guest without its exact qualification DMI
 marker, generates an isolated runtime authority, and delivers the claim only to
 a private `/run` file. These helpers do not qualify the signed-repository
 Mycelium APT `plan`/`apply`/`recover` engine or personal SSH grants.
+
+For an installed combined-image disk, the same assembler accepts the genuine
+Unibus package and the owner's private delivery-proof executable:
+
+```sh
+mycelium-package-image --preinstalled qualification.qcow2 /new/private-proof \
+  mycelium.deb mycelium.deb mycelium-package-proof \
+  unibus-core.deb linux_core_delivery
+```
+
+The additional check compares installed router/CLI bytes to the supplied owner
+archive before arranging an `ExecStartPre` proof. The owner proof exercises
+default-deny, temporary authenticated delivery, local readiness and restoration
+of the original conffile. Its tokens, claim authority and proof binaries belong
+only in the private clone, never the public ISO. Supplying these inputs does not
+itself count as a passed runtime check.
 
 ## Verified private guest run: 2026-10-09
 
