@@ -36,8 +36,8 @@ fn main() -> Result<()> {
     if preinstalled {
         args.remove(0);
     }
-    if args.len() != 5 {
-        return Err("usage: mycelium-package-image [--preinstalled] QUALIFICATION_QCOW2 NEW_OUTPUT_DIR PACKAGE_A PACKAGE_B PROOF_BINARY".into());
+    if args.len() != 5 && !(preinstalled && args.len() == 7) {
+        return Err("usage: mycelium-package-image [--preinstalled] QUALIFICATION_QCOW2 NEW_OUTPUT_DIR PACKAGE_A PACKAGE_B PROOF_BINARY [UNIBUS_OWNER_DEB UNIBUS_DELIVERY_PROOF] (Unibus requires --preinstalled)".into());
     }
     if run("id", &["-u"])?.trim() != "0" {
         return Err("root required for disposable image assembly".into());
@@ -46,6 +46,11 @@ fn main() -> Result<()> {
         if !regular(Path::new(&args[index])) {
             return Err("inputs must be regular nonsymlink files, never host devices".into());
         }
+    }
+    if args.get(5).is_some_and(|path| !regular(Path::new(path)))
+        || args.get(6).is_some_and(|path| !regular(Path::new(path)))
+    {
+        return Err("Unibus inputs must be regular nonsymlink files".into());
     }
     let out = PathBuf::from(&args[1]);
     fs::create_dir(&out)?;
@@ -127,6 +132,32 @@ fn main() -> Result<()> {
         put(&root, "usr/lib/systemd/system/fungos-mycelium-package-proof.service", "[Unit]\nDescription=Private disposable Mycelium package qualification\nAfter=network-online.target\nWants=network-online.target\nConditionVirtualization=yes\n\n[Service]\nType=oneshot\nExecStart=/opt/fungos-mycelium-package-qa/proof\nTimeoutStartSec=240\nUMask=0077\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n")?;
         if preinstalled {
             put(&root, "etc/systemd/system/fungos-mycelium-package-proof.service.d/10-preinstalled.conf", "[Service]\nExecStart=\nExecStart=/opt/fungos-mycelium-package-qa/proof --preinstalled\n")?;
+        }
+        if args.len() == 7 {
+            if run("dpkg-deb", &["-f", &args[5], "Package"])?.trim() != "unibus-core" {
+                return Err("Unibus proof requires the genuine owner core package".into());
+            }
+            let owner = out.join("unibus-owner-readback");
+            run("dpkg-deb", &["-x", &args[5], text(&owner)?])?;
+            let mut digests = Vec::new();
+            for path in ["usr/bin/unibus-router", "usr/bin/unibusctl"] {
+                let supplied = run("sha256sum", &[text(&owner.join(path))?])?;
+                let installed = run("sha256sum", &[text(&root.join(path))?])?;
+                let digest = supplied
+                    .split_whitespace()
+                    .next()
+                    .ok_or("Unibus digest missing")?;
+                if installed.split_whitespace().next() != Some(digest) {
+                    return Err("installed Unibus differs from supplied owner package".into());
+                }
+                digests.push(digest.to_owned());
+            }
+            fs::copy(&args[6], qa.join("unibus-delivery-proof"))?;
+            fs::set_permissions(
+                qa.join("unibus-delivery-proof"),
+                fs::Permissions::from_mode(0o755),
+            )?;
+            put(&root, "etc/systemd/system/fungos-mycelium-package-proof.service.d/20-unibus-delivery.conf", &format!("[Unit]\nAfter=unibus-router.service\nRequires=unibus-router.service\n\n[Service]\nExecStartPre=/opt/fungos-mycelium-package-qa/unibus-delivery-proof {} {}\n", digests[0], digests[1]))?;
         }
         run(
             "chroot",
