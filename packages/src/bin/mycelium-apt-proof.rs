@@ -107,12 +107,15 @@ fn wait_health() -> Result<()> {
     }
 }
 fn plan(candidate: &str) -> Result<(String, String)> {
+    plan_for("mycelium", candidate, BIN)
+}
+fn plan_for(package: &str, candidate: &str, executable: &str) -> Result<(String, String)> {
     let output = run(
         BIN,
-        &["software", "apt", "plan", "mycelium", candidate, BIN],
+        &["software", "apt", "plan", package, candidate, executable],
     )?;
     let digest = plan_digest(&output)?;
-    let path = format!("{QA}/{candidate}.plan.json");
+    let path = format!("{QA}/{package}-{candidate}.plan.json");
     private(&path, output.as_bytes())?;
     Ok((path, digest))
 }
@@ -189,6 +192,11 @@ impl Drop for Fault {
     }
 }
 fn main() -> Result<()> {
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    require(
+        args.is_empty() || args == ["--unibus-only"],
+        "unknown proof mode",
+    )?;
     require(run("id", &["-u"])?.trim() == "0", "root required")?;
     require(
         fs::read_to_string("/sys/class/dmi/id/product_name")?.trim()
@@ -200,6 +208,9 @@ fn main() -> Result<()> {
         "missing prerequisite genuine package proof",
     )?;
     std::env::set_var("MYCELIUM_HOME", "/var/lib/mycelium");
+    if !args.is_empty() {
+        return unibus_updates();
+    }
     let candidate = "0.1.0+qualification5";
     let failed = "0.1.0+signedqa3";
     if Path::new(STATE).is_file() {
@@ -223,12 +234,18 @@ fn main() -> Result<()> {
     wait_health()?;
     let before = identity()?;
     if qualified_baseline(&version()?) {
-        require(sha(BIN)? == "60664012ba7b7b3a7c3ece05975de582caa9b6cc207a4f1b3ce535f17d3c2fa8", "fresh baseline is not the exact retained qa5/qa6 executable")?;
+        require(
+            sha(BIN)? == "60664012ba7b7b3a7c3ece05975de582caa9b6cc207a4f1b3ce535f17d3c2fa8",
+            "fresh baseline is not the exact retained qa5/qa6 executable",
+        )?;
         run("apt-get", &["update", "--error-on=any"])?;
         let (path, digest) = plan("0.1.0")?;
         apply(&path, &digest)?;
         wait_health()?;
-        require(identity()? == before && version()? == "0.1.0", "signed baseline preparation changed identity or version")?;
+        require(
+            identity()? == before && version()? == "0.1.0",
+            "signed baseline preparation changed identity or version",
+        )?;
         println!("FUNGOS_MYCELIUM_SIGNED_APT_BASELINE_DOWNGRADE_VERIFIED");
     }
     let baseline_sha = sha(BIN)?;
@@ -363,6 +380,92 @@ fn main() -> Result<()> {
 }
 fn qualified_baseline(version: &str) -> bool {
     matches!(version, "0.1.0+qualification5" | "0.1.0+qualification6")
+}
+/// Same admission/activation engine, with owner Unibus readiness. Healthy
+/// version fixtures retain the exact owner executable; the failing fixture is
+/// deliberately exit-only. This proves lifecycle recovery, not code migration.
+fn unibus_updates() -> Result<()> {
+    const ROUTER: &str = "/usr/bin/unibus-router";
+    const MARKER: &str = "/var/lib/fungos-unibus-apt-proof";
+    const CONFIG: &str = "/etc/unibus/hub.json";
+    let installed = || run("dpkg-query", &["-W", "-f=${Version}", "unibus-core"]);
+    let health = || run(BIN, &["software", "apt", "health", "unibus-core", ROUTER]);
+    let original = identity()?;
+    let config = fs::read(CONFIG)?;
+    let router = sha(ROUTER)?;
+    let cli = sha("/usr/bin/unibusctl")?;
+    wait_health()?;
+    health()?;
+    for path in [ROUTER, "/usr/bin/unibusctl"] {
+        require(
+            run("dpkg-query", &["-S", path])?.trim() == format!("unibus-core: {path}"),
+            "Unibus owner mismatch",
+        )?;
+    }
+    if Path::new(MARKER).is_file() {
+        require(
+            installed()? == "0.1.0+aptqa2",
+            "Unibus version did not persist",
+        )?;
+        require(
+            fs::read_to_string(MARKER)? == format!("{original}{router}\n{cli}\n{}\n", sha(CONFIG)?),
+            "Unibus identity/config/bytes changed over reboot",
+        )?;
+        require(
+            !Path::new(CHECKPOINT).exists(),
+            "recovery pending across reboot",
+        )?;
+        println!("FUNGOS_UNIBUS_SIGNED_APT_REBOOT_VERIFIED");
+        run("systemctl", &["--no-block", "poweroff"])?;
+        return Ok(());
+    }
+    require(
+        installed()? == "0.1.0",
+        "not genuine initial Unibus owner package",
+    )?;
+    run("apt-get", &["update", "--error-on=any"])?;
+    let (path, digest) = plan_for("unibus-core", "0.1.0+aptqa2", ROUTER)?;
+    rejected(apply(&path, &"0".repeat(64)), "APT plan digest mismatch")?;
+    require(
+        installed()? == "0.1.0" && sha(ROUTER)? == router,
+        "rejected digest mutated owner package",
+    )?;
+    println!("FUNGOS_UNIBUS_APT_EXACT_DIGEST_REJECTION_VERIFIED");
+    apply(&path, &digest)?;
+    health()?;
+    require(
+        installed()? == "0.1.0+aptqa2" && sha(ROUTER)? == router,
+        "healthy version fixture changed owner binary",
+    )?;
+    println!("FUNGOS_UNIBUS_SIGNED_APT_LIFECYCLE_UPGRADE_VERIFIED");
+    let (bad, digest) = plan_for("unibus-core", "0.1.0+aptqa3", ROUTER)?;
+    rejected(
+        apply(&bad, &digest),
+        "previous package restored and health verified",
+    )?;
+    health()?;
+    require(
+        installed()? == "0.1.0+aptqa2"
+            && sha(ROUTER)? == router
+            && sha("/usr/bin/unibusctl")? == cli,
+        "rollback failed to restore owner bytes",
+    )?;
+    require(
+        !Path::new(CHECKPOINT).exists(),
+        "Unibus rollback left recovery pending",
+    )?;
+    require(
+        identity()? == original && fs::read(CONFIG)? == config,
+        "rollback changed identity or operator conffile",
+    )?;
+    println!("FUNGOS_UNIBUS_SIGNED_APT_FAILED_HEALTH_ROLLBACK_VERIFIED");
+    private(
+        MARKER,
+        format!("{original}{router}\n{cli}\n{}\n", sha(CONFIG)?).as_bytes(),
+    )?;
+    run("sync", &[])?;
+    run("systemctl", &["--no-block", "reboot"])?;
+    Ok(())
 }
 #[cfg(test)]
 mod tests {

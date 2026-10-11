@@ -30,10 +30,31 @@ fn put(root: &Path, path: &str, content: &str) -> Result<()> {
 fn regular(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok_and(|m| m.is_file())
 }
+fn with_unibus_probe(old: &str) -> Result<String> {
+    // The prerequisite owner proof generated this JSON. Preserve its existing
+    // bindings verbatim; the real owner engine parses/validates the result.
+    let old = old.trim();
+    if old.len() > 1024 * 1024
+        || !old.starts_with('{')
+        || !old.ends_with('}')
+        || old.contains("\"unibus-core\"")
+    {
+        return Err(
+            "private owner binding must be bounded and lack an existing Unibus entry".into(),
+        );
+    }
+    let body = old[1..old.len() - 1].trim();
+    let separator = if body.is_empty() { "" } else { "," };
+    Ok(format!("{{{body}{separator}\"unibus-core\":{{\"unit\":\"unibus-router.service\",\"timeout_secs\":10,\"readiness\":{{\"kind\":\"unix\",\"path\":\"/run/unibus/health.sock\",\"request\":\"health\\n\",\"expect_prefix\":\"READY unibus\\n\"}}}}}}"))
+}
 fn main() -> Result<()> {
-    let args: Vec<_> = std::env::args().skip(1).collect();
+    let mut args: Vec<_> = std::env::args().skip(1).collect();
+    let unibus = args.first().is_some_and(|arg| arg == "--unibus");
+    if unibus {
+        args.remove(0);
+    }
     if args.len() != 4 {
-        return Err("usage: mycelium-apt-image PRIVATE_QUALIFIED_RAW_DISK NEW_OUTPUT_DIR SIGNED_REPOSITORY PROOF_BINARY".into());
+        return Err("usage: mycelium-apt-image [--unibus] PRIVATE_QUALIFIED_RAW_DISK NEW_OUTPUT_DIR SIGNED_REPOSITORY PROOF_BINARY".into());
     }
     if run("id", &["-u"])?.trim() != "0" {
         return Err("root required for private disposable image assembly".into());
@@ -62,6 +83,7 @@ fn main() -> Result<()> {
     }
     let out = PathBuf::from(&args[1]);
     fs::create_dir(&out)?;
+    fs::set_permissions(&out, fs::Permissions::from_mode(0o700))?;
     let image = out.join("disk.raw");
     run(
         "cp",
@@ -85,8 +107,12 @@ fn main() -> Result<()> {
     let prepared = (|| -> Result<()> {
         for relative in ["", "etc", "etc/ssh"] {
             let metadata = fs::symlink_metadata(root.join(relative))?;
-            if !metadata.is_dir() || !safe_directory_owner(metadata.uid(), metadata.gid(), metadata.mode()) {
-                return Err(format!("private fixture root ownership/mode invalid: /{relative}").into());
+            if !metadata.is_dir()
+                || !safe_directory_owner(metadata.uid(), metadata.gid(), metadata.mode())
+            {
+                return Err(
+                    format!("private fixture root ownership/mode invalid: /{relative}").into(),
+                );
             }
         }
         if !root.join("var/lib/fungos-mycelium-package-proof").is_file()
@@ -114,6 +140,34 @@ fn main() -> Result<()> {
         run("cp", &["-a", &args[2], text(&qa.join("repository"))?])?;
         fs::copy(&args[3], qa.join("proof"))?;
         fs::set_permissions(qa.join("proof"), fs::Permissions::from_mode(0o755))?;
+        if unibus {
+            // Only this private clone receives a probe grant. No app grants,
+            // LAN listener or production authority are introduced.
+            if !regular(&root.join("usr/bin/unibus-router")) {
+                return Err("Unibus mode requires installed owner router".into());
+            }
+            use std::io::Read;
+            let mut entropy = [0; 32];
+            fs::File::open("/dev/urandom")?.read_exact(&mut entropy)?;
+            let token: String = entropy.iter().map(|byte| format!("{byte:02x}")).collect();
+            put(&root, "opt/fungos-mycelium-apt-qa/health-token", &token)?;
+            fs::set_permissions(qa.join("health-token"), fs::Permissions::from_mode(0o600))?;
+            put(
+                &root,
+                "etc/unibus/hub.json",
+                r#"{"installation_id":"qa8-update","listen":"127.0.0.1:18790","allow_insecure_lan":false,"routes":[],"nodes":[{"producer_id":"health","token_file":"/run/credentials/unibus-router.service/health-token","zones":["health"],"capabilities":["health.probe"]}]}"#,
+            )?;
+            put(
+                &root,
+                "opt/fungos-mycelium-apt-qa/health-client.json",
+                r#"{"installation_id":"qa8-update","producer_id":"health","hub_endpoint":"127.0.0.1:18790","token_file":"/run/credentials/unibus-router.service/health-token","zones":["health"],"schema_version":2,"read_timeout_ms":100}"#,
+            )?;
+            put(&root, "etc/systemd/system/unibus-router.service.d/90-private-apt-health.conf", "[Service]\nLoadCredential=health-token:/opt/fungos-mycelium-apt-qa/health-token\nLoadCredential=health-client:/opt/fungos-mycelium-apt-qa/health-client.json\nEnvironment=UNIBUS_HEALTH_SOCKET=/run/unibus/health.sock\nEnvironment=UNIBUS_HEALTH_CLIENT=/run/credentials/unibus-router.service/health-client\n")?;
+            let policy = root.join("var/lib/mycelium/software-services.json");
+            let old = fs::read_to_string(&policy)?;
+            fs::write(&policy, with_unibus_probe(&old)?)?;
+            fs::set_permissions(&policy, fs::Permissions::from_mode(0o600))?;
+        }
         for original in ["etc/apt/sources.list", "etc/apt/sources.list.d"] {
             let path = root.join(original);
             if path.exists() {
@@ -137,6 +191,9 @@ fn main() -> Result<()> {
         }
         fs::create_dir(&lists)?;
         put(&root, "usr/lib/systemd/system/fungos-mycelium-apt-proof.service", "[Unit]\nDescription=Private signed Mycelium APT qualification\nAfter=mycelium.service network-online.target\nWants=mycelium.service network-online.target\nConditionVirtualization=yes\n\n[Service]\nType=oneshot\nExecStart=/opt/fungos-mycelium-apt-qa/proof\nTimeoutStartSec=360\nUMask=0077\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n")?;
+        if unibus {
+            put(&root, "etc/systemd/system/fungos-mycelium-apt-proof.service.d/10-unibus.conf", "[Unit]\nAfter=unibus-router.service\nWants=unibus-router.service\n[Service]\nExecStart=\nExecStart=/opt/fungos-mycelium-apt-qa/proof --unibus-only\n")?;
+        }
         run(
             "chroot",
             &[
@@ -162,6 +219,19 @@ fn safe_directory_owner(uid: u32, gid: u32, mode: u32) -> bool {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn adds_private_probe_without_overwriting_owner_binding() {
+        let empty = super::with_unibus_probe("{}\n").unwrap();
+        assert!(empty.starts_with("{\"unibus-core\":"));
+        assert!(empty.ends_with("}}}"));
+        let owner = "{\"mycelium\":{\"timeout_secs\":30}}";
+        assert!(super::with_unibus_probe(owner)
+            .unwrap()
+            .starts_with("{\"mycelium\":{\"timeout_secs\":30},\"unibus-core\":"));
+        assert!(super::with_unibus_probe(&empty).is_err());
+        assert!(super::with_unibus_probe("[]").is_err());
+        assert!(super::with_unibus_probe(&format!("{{{}}}", " ".repeat(1024 * 1024))).is_err());
+    }
     #[test]
     fn rejects_builder_owned_or_writable_ancestors() {
         assert!(super::safe_directory_owner(0, 0, 0o755));

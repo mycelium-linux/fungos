@@ -55,6 +55,32 @@ APT remains responsible for package dependencies and conffiles. Mycelium owns
 selection, rollout gates and recovery; do not manage the same executable through
 both APT and native binary activation.
 
+## Private combined-image update checks
+
+The existing `mycelium-apt-image` / `mycelium-apt-proof` helpers also accept
+Unibus qualification. This reuses Mycelium's real `software apt` engine;
+it does not implement a second updater:
+
+```sh
+mycelium-apt-image --unibus private-qualified-disk.raw /new/private-proof \
+  /private/signed-generation mycelium-apt-proof
+```
+
+Only a completed, isolated package-qualification disk is accepted. The helper
+adds a fresh private health credential, a loopback-only probe grant and the
+owner readiness binding. Existing Mycelium bindings are preserved; an existing
+Unibus binding is rejected rather than overwritten. These files are fixtures,
+not a public-image default or fleet rollout policy.
+
+The signed generation must contain the exact installed `unibus-core` archive
+as well as versions `0.1.0+aptqa2` and `0.1.0+aptqa3` from `edge-apt-fixtures`.
+The healthy fixture retains the supplied owner router bytes; the deliberately
+unhealthy fixture exits immediately. This proves signed package lifecycle,
+failed-health restoration, operator conffile/identity preservation and actual
+reboot, **not** changed-code compatibility or application data-migration safety.
+Boot only this clone with the `fungos-mycelium-apt-validation` DMI marker.
+No private signer enters the guest; retain failed evidence and inspect journals.
+
 ## Client trust
 
 Install an independently admitted public key at
