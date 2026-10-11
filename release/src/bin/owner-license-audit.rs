@@ -273,15 +273,20 @@ fn main() -> Result<()> {
         println!("compact attribution evidence retained; not legal clearance");
         return Ok(());
     }
-    if !(6..=8).contains(&args.len()) {
+    let registry_only = args.first().is_some_and(|arg| arg == "registry");
+    if !(if registry_only {
+        args.len() == 4
+    } else {
+        (6..=8).contains(&args.len())
+    }) {
         return Err(
-            "usage: owner-license-audit OWNER_SOURCE VENDOR RUST_SRC RUST_DOC ZIG_LIB NEW_OUTPUT [RUST_LLVM_LIBUNWIND [SUPPLEMENTAL_NOTICES]]"
+            "usage: owner-license-audit registry OWNER_SOURCE VENDOR NEW_OUTPUT\n   or: owner-license-audit OWNER_SOURCE VENDOR RUST_SRC RUST_DOC ZIG_LIB NEW_OUTPUT [RUST_LLVM_LIBUNWIND [SUPPLEMENTAL_NOTICES]]"
                 .into(),
         );
     }
-    let source = Path::new(&args[0]);
-    let vendor = Path::new(&args[1]);
-    let output = Path::new(&args[5]);
+    let source = Path::new(&args[usize::from(registry_only)]);
+    let vendor = Path::new(&args[1 + usize::from(registry_only)]);
+    let output = Path::new(&args[if registry_only { 3 } else { 5 }]);
     fs::create_dir(output)?;
     fs::write(
         output.join("audit-status.txt"),
@@ -373,32 +378,44 @@ fn main() -> Result<()> {
     fs::write(output.join("registry.tsv"), &crates)?;
     // Full runtime sources are retained at these input paths. Inventory every
     // file, preserving notices separately; don't infer all files share one license.
-    for (label, path) in [
-        ("rust-1.98.1-library", &args[2]),
-        ("rust-1.98.1-doc", &args[3]),
-        ("zig-0.14.1-lib", &args[4]),
-    ] {
-        collect(label, Path::new(path), output, &mut notices, true)?;
+    if !registry_only {
+        for (label, path) in [
+            ("rust-1.98.1-library", &args[2]),
+            ("rust-1.98.1-doc", &args[3]),
+            ("zig-0.14.1-lib", &args[4]),
+        ] {
+            collect(label, Path::new(path), output, &mut notices, true)?;
+        }
+        if let Some(path) = args.get(6) {
+            collect(
+                "rust-llvm-libunwind",
+                Path::new(path),
+                output,
+                &mut notices,
+                true,
+            )?;
+        }
+        if let Some(path) = args.get(7) {
+            collect(
+                "supplemental-upstream",
+                Path::new(path),
+                output,
+                &mut notices,
+                true,
+            )?;
+        }
     }
-    if let Some(path) = args.get(6) {
-        collect(
-            "rust-llvm-libunwind",
-            Path::new(path),
-            output,
-            &mut notices,
-            true,
-        )?;
-    }
-    if let Some(path) = args.get(7) {
-        collect(
-            "supplemental-upstream",
-            Path::new(path),
-            output,
-            &mut notices,
-            true,
-        )?;
-    }
-    collect("mycelium-owner", source, output, &mut notices, false)?;
+    collect(
+        if registry_only {
+            "owner-source"
+        } else {
+            "mycelium-owner"
+        },
+        source,
+        output,
+        &mut notices,
+        false,
+    )?;
     fs::write(output.join("registry.tsv"), crates)?;
     fs::write(output.join("source-files.tsv"), notices)?;
     fs::write(output.join("audit-receipt.txt"), format!("registry_packages_verified={}\nlock_sha256={}\nstatus=source-integrity-and-notice-inventory-only\nlegal_clearance=not-asserted\n", registry.len(), digest(&source.join("Cargo.lock"))?))?;
