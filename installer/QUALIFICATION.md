@@ -81,6 +81,54 @@ under the evidence root above. The private disk is
 These results still do not establish personal SSH, signed component rollback,
 public interactive installation, whole-system health or final v0.1 acceptance.
 
+### Personal SSH and signed component recovery
+
+Separate fresh clones of the successfully enrolled QA8 disk completed the
+following checks; all owned QEMUs stopped and inspection loops detached.
+
+- Personal certificate-only SSH succeeded for the granted identity. Enrollment
+  alone granted no personal access; same-CA ungranted identity, wrong role and
+  revoked certificate were rejected.
+- Mycelium's real APT engine rejected an incorrect plan digest, missing admitted
+  key, tampered signature and stale binding, then activated changed owner bytes.
+  Failed-health rollback and interrupted activation recovery restored the prior
+  healthy version and identity. Another disk-only boot verified persistence.
+- Unibus used that same engine and its authenticated local owner readiness
+  endpoint. Exact-digest rejection, successful lifecycle upgrade, failed-health
+  rollback, conffile/identity preservation and reboot persistence passed. The
+  healthy qualification version retains the exact owner executable; the failing
+  version is explicitly an exit-only fault fixture, not a releasable application
+  build. This is not changed-code or data-migration rollback evidence for Unibus.
+
+| Marker log | SHA-256 |
+|---|---|
+| `access-markers.log` | `3cc25b8b0f4dc32cc05c1422433aec913e6cc0257fc3e9f1327ec71ddb855e51` |
+| `apt2-markers.log` | `de9a749f8ed6cc2afdb40707c68d2744b13907af0385b028f662913e19de0951` |
+| `unibus-apt-markers.log` | `8dc75a88c0a69dedf9b8636e11b176176f9c94777c8097db6624dcab3f024fa0` |
+
+The new disposable, one-day test signer has public fingerprint
+`95BEB9382917B4D6A71F338E6143616EFBDE00B5`; its private key never entered a
+guest or public media. Mycelium generation is
+`0a299035d6c0cf7e567d3bed076c4604d26b9d774df66a3d12e90ca6032d02cc`;
+Unibus generation is
+`be430e8b85441f1d736510b1040d07807964a8898867b196a62fe9ad41a96273`.
+Signature and expiry checks stayed enabled, without a NIC or signature bypass.
+The first APT attempt correctly refused a repository missing the installed QA6
+rollback archive, before mutation. The passing generation includes that exact
+archive. Neither failed attempt is counted as acceptance.
+
+The failed runtime disk was losslessly converted to compressed qcow2: `qemu-img
+check` passed and `qemu-img compare` reported identical images before the
+temporary raw copy was removed. It remains private at
+`/dev/shm/fungos-unibus-notices.6nHVu8/qa8-failed-runtime-retained/disk.qcow2`.
+Reproducible extraction/build caches were removed; source archives and check
+logs remain retained. Tmpfs disks are temporary, not an off-device backup.
+
+Still open for v0.1: full installation through the **unmodified public
+interactive** flow, whole-system first-boot health assessment, final source and
+notice publication, release signing/recovery handoff and final torrent/download
+promotion. Ordinary UEFI does not imply Secure Boot or compliance certification.
+
 ## Preparatory public UEFI entry (2026-10-09)
 
 The retained ISO from the earlier BIOS experiment has SHA-256
