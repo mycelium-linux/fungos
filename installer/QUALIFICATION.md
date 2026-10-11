@@ -52,6 +52,35 @@ do not prove whole-system health, public interactive installation, personal SSH,
 authenticated Unibus delivery, signed component update/rollback or Secure Boot.
 They are local qualification evidence, not a v0.1 release announcement.
 
+### Installed delivery, claim and reboot
+
+A fresh private clone of QA8's UEFI installation passed the owner Unibus proof:
+the empty default rejects registration, an authenticated producer reaches an
+authorized consumer, incorrect tokens and ungranted capabilities are rejected,
+the local owner readiness endpoint authenticates, and original configuration is
+restored. The actual package-owned router ran under systemd's unprivileged
+dynamic identity; neither executable was substituted by a test fixture.
+
+The same clone passed Mycelium's inert-install, runtime first-contact sandbox,
+package-safe enrollment, repair and native-update prewrite rejection checks.
+A second disk-only boot verified unchanged peer, certificate, Iroh and SSH host
+identity and repeated all Unibus checks. No external NIC, host port forwarding
+or shared filesystem was attached. The runtime authority and short-lived claim
+were generated privately inside the guest, not supplied in public media.
+
+The first attempted clone exposed a **harness** systemd dependency error:
+`Requires=unibus-router.service` cancelled its proof during an intentional
+router restart, interrupting cleanup. It is retained as failed evidence, not a
+pass. Helper fix `d19dc90` uses `Wants` plus `After`, has a regression test, and
+was tested on a new clone; public ISO bytes did not change.
+
+The successful marker log is `runtime-markers.log`, SHA-256
+`0d12339c21fbf43659bf40e75d6781ee11ac8a7e2f23e739df742d2075f93e20`,
+under the evidence root above. The private disk is
+`/dev/shm/fungos-unibus-notices.6nHVu8/qa8-runtime-proof2/disk.raw`.
+These results still do not establish personal SSH, signed component rollback,
+public interactive installation, whole-system health or final v0.1 acceptance.
+
 ## Preparatory public UEFI entry (2026-10-09)
 
 The retained ISO from the earlier BIOS experiment has SHA-256
