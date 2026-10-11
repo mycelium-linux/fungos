@@ -58,7 +58,9 @@ printf '%s  ./boot/grub/grub.cfg\n' "$(md5sum "$work/grub-new.cfg" | cut -d' ' -
 (cd "$work" && find fungos -type f -exec md5sum {} +) | sed 's@  fungos/@  ./fungos/@' >> "$work/md5sum.txt"
 # Replay Debian's BIOS/UEFI/hybrid boot layout. Public ISO contains no destructive
 # confirmation answers; interactive partitioning remains Debian's responsibility.
-xorriso -indev "$input" -outdev "$output" -boot_image any replay \
+# The validated, absent output is a new regular file, never an optical device.
+# Explicit stdio also permits tmpfs paths under /dev/shm on build hosts.
+xorriso -indev "$input" -outdev "stdio:$output" -boot_image any replay \
   -map "$work/fungos" /fungos -map "$work/txt-new.cfg" /isolinux/txt.cfg \
   -map "$work/grub-new.cfg" /boot/grub/grub.cfg -map "$work/md5sum.txt" /md5sum.txt -commit -end
 sha256sum "$output" > "$output.sha256"
