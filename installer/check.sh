@@ -42,4 +42,14 @@ if [ -n "${DEBIAN_TEST_ISO:-}" ]; then
   grep -q 'credential state found' "$tmp/rejection.log"
   [ ! -e "$tmp/unsafe.iso" ]
 fi
+# Public and private installations must share profile package policy. In
+# particular, d-i must not upgrade against an unpinned mirror before apply.sh.
+grep -qx 'd-i apt-setup/use_mirror boolean false' "$dir/interactive.preseed"
+grep -qx 'd-i apt-setup/services-select multiselect' "$dir/interactive.preseed"
+grep -qx 'tasksel tasksel/first multiselect' "$dir/interactive.preseed"
+grep -qx 'd-i pkgsel/upgrade select none' "$dir/interactive.preseed"
+if sed '/^#/d' "$dir/test.preseed" | grep -Eq 'apt-setup/|tasksel/first|pkgsel/upgrade'; then
+  echo 'private harness duplicates public package policy' >&2; exit 1
+fi
+grep -Fq 'cat "$script_dir/interactive.preseed"' "$dir/qemu-proof.sh"
 echo 'installer syntax, firmware rejection, positive disk guard, ambiguity rejection, identity rejection, public preseed safety: passed'

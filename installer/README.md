@@ -35,6 +35,15 @@ enrollment claim, certificate or unattended partitioning approval. The QEMU
 preseed is separate and never included in the public ISO. Managed physical
 installation authorization, encryption/Tang/Clevis and Canvas are later work.
 
+Package selection belongs to the headless-edge profile: public preseeding
+disables Debian's rolling mirror, security/update task selection and pre-profile
+upgrade, and selects no optional Debian desktop tasks. The late command installs
+the profile from the shared signed snapshot. These are package-policy defaults,
+not disk-erasure or account answers. The private harness prepends this same
+public preseed before its isolated account/disk answers rather than duplicating
+package policy. This correction follows the QA8 interactive finding; new ISO
+bytes still require fresh qualification.
+
 ## Build and test on Linux
 
 Use Agora (or another isolated Linux build host), not Neo, for image work.

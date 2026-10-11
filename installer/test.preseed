@@ -6,8 +6,6 @@ d-i netcfg/choose_interface select auto
 d-i netcfg/hostname string fungos
 d-i netcfg/get_domain string local
 d-i hw-detect/load_firmware boolean false
-d-i apt-setup/use_mirror boolean false
-d-i apt-setup/services-select multiselect
 d-i passwd/root-password-crypted password !
 d-i passwd/root-login boolean false
 d-i passwd/make-user boolean true
@@ -26,10 +24,6 @@ d-i partman/choose_partition select finish
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 d-i partman/mount_style select uuid
-tasksel tasksel/first multiselect
-d-i pkgsel/include string ca-certificates
-d-i pkgsel/upgrade select none
-popularity-contest popularity-contest/participate boolean false
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/bootdev string /dev/vda
 d-i preseed/late_command string cp -a /cdrom/fungos /target/tmp/fungos-installer && in-target /bin/sh /tmp/fungos-installer/apply.sh >/dev/ttyS0 2>&1 && mkdir -p /target/etc/default/grub.d && echo 'GRUB_CMDLINE_LINUX="console=ttyS0,115200n8"' > /target/etc/default/grub.d/fungos-console.cfg && in-target update-grub && echo FUNGOS_INSTALL_COMPLETE >/dev/ttyS0

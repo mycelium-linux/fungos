@@ -43,14 +43,17 @@ xorriso -osirrox on -indev "$iso" -extract /install.amd/vmlinuz "$proof/vmlinuz"
 chmod u+w "$proof/initrd.gz"
 mkdir "$proof/inject"
 (cd "$proof/inject" && gzip -dc "$proof/initrd.gz" | cpio --quiet -id)
+{
+cat "$script_dir/interactive.preseed"
 if [ "$firmware" = uefi ]; then
  # Debian's EFI atomic recipe needs more than 8 GiB (8 GB root + ESP + swap).
  # Use its existing small-disk recipe, keeping the exact safety guard unchanged.
  sed 's/partman-auto\/choose_recipe select atomic/partman-auto\/choose_recipe select small_disk/' \
-  "$script_dir/test.preseed" > "$proof/inject/preseed.cfg"
+  "$script_dir/test.preseed"
 else
- cp "$script_dir/test.preseed" "$proof/inject/preseed.cfg"
+ cat "$script_dir/test.preseed"
 fi
+} > "$proof/inject/preseed.cfg"
 cp "$script_dir/guard-disk.sh" "$proof/inject/guard-disk"
 chmod 0755 "$proof/inject/guard-disk"
 (cd "$proof/inject" && find . -print | cpio --quiet -H newc -o | gzip -n) > "$proof/initrd.gz"

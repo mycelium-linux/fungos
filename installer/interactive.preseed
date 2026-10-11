@@ -1,4 +1,11 @@
 # Generic public media: no passwords, keys, claim, target disk or erasure approval.
 # Build tooling wires this into normal BIOS/UEFI installer boot entries.
+# The profile owns package selection and snapshot convergence, not Debian's
+# rolling mirror/task defaults. Account and disk choices remain interactive.
+d-i apt-setup/use_mirror boolean false
+d-i apt-setup/services-select multiselect
+tasksel tasksel/first multiselect
+d-i pkgsel/upgrade select none
+popularity-contest popularity-contest/participate boolean false
 d-i pkgsel/include string ca-certificates
 d-i preseed/late_command string cp -a /cdrom/fungos /target/tmp/fungos-installer && in-target /bin/sh /tmp/fungos-installer/apply.sh
