@@ -1,0 +1,4 @@
+# Physical interfaces belong to systemd-networkd and the fungOS profile.
+# Do not retain Debian Installer's competing ifupdown DHCP configuration.
+auto lo
+iface lo inet loopback

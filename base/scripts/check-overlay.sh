@@ -4,7 +4,9 @@ set -eu
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-mkdir -p "$work/source/etc/ssh" "$work/source/usr/libexec" "$work/target/private"
+mkdir -p "$work/source/etc/ssh" "$work/source/etc/network" "$work/source/usr/libexec" "$work/target/private" "$work/target/etc/network"
+cp "$dir/../rootfs/etc/network/interfaces" "$work/source/etc/network/interfaces"
+printf 'allow-hotplug eth0\niface eth0 inet dhcp\n' > "$work/target/etc/network/interfaces"
 printf 'public config\n' > "$work/source/etc/ssh/config"
 printf '#!/bin/sh\nexit 0\n' > "$work/source/usr/libexec/hook"
 chmod 0775 "$work/source" "$work/source/etc" "$work/source/etc/ssh" "$work/source/usr" "$work/source/usr/libexec" "$work/source/usr/libexec/hook"
@@ -25,4 +27,8 @@ done
 [ "$(stat -c '%a' "$work/target/private")" = 700 ]
 [ "$(cat "$work/target/private/key")" = 'private stays private' ]
 [ "$(readlink "$work/target/etc/link")" = /outside-unrelated ]
+cmp "$dir/../rootfs/etc/network/interfaces" "$work/target/etc/network/interfaces"
+if sed '/^#/d' "$work/target/etc/network/interfaces" | grep -Eq 'dhcp|allow-hotplug|source'; then
+  echo 'competing ifupdown interface activation retained' >&2; exit 1
+fi
 echo 'nonroot-builder overlay normalized; unrelated private target preserved'

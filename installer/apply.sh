@@ -30,6 +30,11 @@ sh "$payload/apply-overlay.sh" "$payload/rootfs" /
 chmod 0755 /usr/libexec/fungos-first-contact /usr/libexec/fungos-verify-update
 mkdir -p /usr/lib/fungos/first-contact.d /usr/lib/fungos/update-verifiers.d /usr/share/fungos/installer
 systemctl enable systemd-networkd systemd-resolved ssh fungos-first-contact
+# d-i still runs in this chroot after the late command. Keep its working DNS
+# available behind the final symlink until first boot replaces /run and resolved
+# writes its real stub configuration. Do not embed installer DNS in /etc.
+mkdir -p /run/systemd/resolve
+cp -L /etc/resolv.conf /run/systemd/resolve/stub-resolv.conf
 rm -f /etc/resolv.conf
 ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 dpkg-query -W -f='${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n' | LC_ALL=C sort > /usr/share/fungos/installer/installed.tsv

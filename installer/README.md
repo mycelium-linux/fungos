@@ -44,6 +44,14 @@ public preseed before its isolated account/disk answers rather than duplicating
 package policy. This correction follows the QA8 interactive finding; new ISO
 bytes still require fresh qualification.
 
+The common overlay replaces d-i's physical-interface ifupdown configuration
+with a loopback-only file; networkd owns wired DHCP. An installer-selected static
+address is not retained by this DHCP profile. During installer completion,
+working installer DNS is copied only to the volatile resolved runtime path;
+the final `/etc/resolv.conf` points to resolved's stub. First boot replaces
+`/run` and resolved populates that path normally. No stale installer DNS server
+is baked into persistent OS configuration.
+
 ## Build and test on Linux
 
 Use Agora (or another isolated Linux build host), not Neo, for image work.
