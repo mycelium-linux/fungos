@@ -18,6 +18,10 @@ Replacing a workload must not require browsers to learn revision IPs. Shroud's
 `.shroud.svc` members remain Shroud-owned; Mycelium delegates that namespace
 instead of copying replicas into its inventory-derived DNS records.
 
+The existing Shroud audit tracks prepared-name versus serving-alias semantics
+separately. Do not infer healthy promoted replicas from a resolvable name or
+claim that Beachhead's resolver/serving-alias rollout has been completed here.
+
 Mycelium's read-only `dns plan --site SITE --delegations FILE` produces site
 records and conditional forwarding intent. It neither changes default DNS nor
 installs a resolver. See the owning Mycelium `docs/site-dns.md` runbook for format,
