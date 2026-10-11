@@ -68,4 +68,15 @@ payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
 # Also exercise a preexisting stub symlink, not just d-i's regular resolver.
 payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
 [ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
+# Model resolved's maintainer script replacing the resolver between the early
+# capture and late transition. The usable installer DNS must win, not its
+# unstarted loopback stub. Run the real early/late command fragments separately.
+grep -F 'cp -L /etc/resolv.conf "$payload/installer-resolv.conf"' "$dir/apply.sh" |
+  sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g" > "$tmp/resolver-capture.sh"
+payload="$tmp/resolver/payload" sh "$tmp/resolver-capture.sh"
+printf 'nameserver 127.0.0.53\n' > "$tmp/resolver/run/systemd/resolve/stub-resolv.conf"
+sed -n '/^mkdir -p \/run\/systemd\/resolve$/,/^ln -s \/run\/systemd\/resolve\/stub-resolv.conf \/etc\/resolv.conf$/p' "$dir/apply.sh" |
+  sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g; s@/run/systemd/resolve@$tmp/resolver/run/systemd/resolve@g" > "$tmp/resolver-late.sh"
+payload="$tmp/resolver/payload" sh "$tmp/resolver-late.sh"
+[ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
 echo 'installer syntax, firmware rejection, positive disk guard, ambiguity rejection, identity rejection, public preseed safety: passed'

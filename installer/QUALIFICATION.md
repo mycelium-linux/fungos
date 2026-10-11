@@ -178,6 +178,25 @@ and notice publication, release signing/recovery handoff and final
 torrent/download promotion. Ordinary UEFI does not imply Secure Boot or
 compliance certification.
 
+### QA9 failed resolver transition
+
+QA9 was built from `f1e77ddeb18e591f99bf0f54bc8c27c820cd074a`, with ISO
+SHA-256 `42cc200562571dcf97655956dab3d7d1b432890d5caa4b0e0d16e45ea4b9eed7`.
+Its unchanged public UEFI menu retained account and explicit disk-write choices;
+the rolling mirror and GNOME task prompts were absent. During the late command,
+however, resolved's package had already changed `/etc/resolv.conf` to its stub
+symlink. The resolver copy correctly refused to copy a file onto itself, so
+installation did **not** complete. No boot/runtime acceptance is claimed.
+
+The failed guest was powered off. Its log is retained at
+`/home/ajmwagar/.cache/fungos-headless-qa9.kyYzp4/public-failed-install.log`,
+SHA-256 `1cea7f88c7d1a9617f44fea70e27923033901fd5539ff45e745c3d7efb3010a1`.
+Fix `2e3ac87` captures working installer DNS in a separate temporary payload
+file **before** package installation, then restores it behind the volatile stub
+at the end. Regressions cover regular and symlinked resolver inputs plus a
+package changing the stub between capture and restoration. New ISO bytes still
+need qualification; this failed run is not silently relabeled successful.
+
 ## Preparatory public UEFI entry (2026-10-09)
 
 The retained ISO from the earlier BIOS experiment has SHA-256
