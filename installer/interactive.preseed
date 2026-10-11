@@ -8,4 +8,4 @@ tasksel tasksel/first multiselect
 d-i pkgsel/upgrade select none
 popularity-contest popularity-contest/participate boolean false
 d-i pkgsel/include string ca-certificates
-d-i preseed/late_command string cp -a /cdrom/fungos /target/tmp/fungos-installer && in-target /bin/sh /tmp/fungos-installer/apply.sh
+d-i preseed/late_command string /bin/sh /cdrom/fungos/apply.sh --installer

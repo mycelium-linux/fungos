@@ -52,31 +52,26 @@ if sed '/^#/d' "$dir/test.preseed" | grep -Eq 'apt-setup/|tasksel/first|pkgsel/u
   echo 'private harness duplicates public package policy' >&2; exit 1
 fi
 grep -Fq 'cat "$script_dir/interactive.preseed"' "$dir/qemu-proof.sh"
-# Exercise the actual resolver transition in an isolated filesystem. The
-# installer must retain working DNS while leaving /etc pointed at volatile /run.
-mkdir -p "$tmp/resolver/etc" "$tmp/resolver/payload"
+# Run the real outer mode against an isolated target. The stand-in in-target
+# removes its temporary /run, reproducing d-i's unmount before finishing APT.
+mkdir -p "$tmp/resolver/target/etc" "$tmp/resolver/target/tmp" "$tmp/resolver/etc" "$tmp/resolver/bin"
+printf '13\n' > "$tmp/resolver/target/etc/debian_version"
 printf 'nameserver 192.0.2.53\n' > "$tmp/resolver/etc/resolv.conf"
-{
-  grep -F 'cp -L /etc/resolv.conf "$payload/installer-resolv.conf"' "$dir/apply.sh"
-  sed -n '/^mkdir -p \/run\/systemd\/resolve$/,/^ln -s \/run\/systemd\/resolve\/stub-resolv.conf \/etc\/resolv.conf$/p' "$dir/apply.sh"
-} |
-  sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g; s@/run/systemd/resolve@$tmp/resolver/run/systemd/resolve@g" > "$tmp/resolver-transition.sh"
-payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
-[ -L "$tmp/resolver/etc/resolv.conf" ]
-[ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
-[ "$(readlink "$tmp/resolver/etc/resolv.conf")" = "$tmp/resolver/run/systemd/resolve/stub-resolv.conf" ]
-# Also exercise a preexisting stub symlink, not just d-i's regular resolver.
-payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
-[ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
-# Model resolved's maintainer script replacing the resolver between the early
-# capture and late transition. The usable installer DNS must win, not its
-# unstarted loopback stub. Run the real early/late command fragments separately.
-grep -F 'cp -L /etc/resolv.conf "$payload/installer-resolv.conf"' "$dir/apply.sh" |
-  sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g" > "$tmp/resolver-capture.sh"
-payload="$tmp/resolver/payload" sh "$tmp/resolver-capture.sh"
-printf 'nameserver 127.0.0.53\n' > "$tmp/resolver/run/systemd/resolve/stub-resolv.conf"
-sed -n '/^mkdir -p \/run\/systemd\/resolve$/,/^ln -s \/run\/systemd\/resolve\/stub-resolv.conf \/etc\/resolv.conf$/p' "$dir/apply.sh" |
-  sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g; s@/run/systemd/resolve@$tmp/resolver/run/systemd/resolve@g" > "$tmp/resolver-late.sh"
-payload="$tmp/resolver/payload" sh "$tmp/resolver-late.sh"
-[ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
-echo 'installer syntax, firmware rejection, positive disk guard, ambiguity rejection, identity rejection, public preseed safety: passed'
+sed "s@/target@$tmp/resolver/target@g; s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g" "$dir/apply.sh" > "$tmp/resolver/apply.sh"
+printf '#!/bin/sh\nset -eu\nrm -rf "%s/target/run" "%s/target/tmp/fungos-installer"\n' "$tmp/resolver" "$tmp/resolver" > "$tmp/resolver/bin/in-target"
+chmod +x "$tmp/resolver/bin/in-target"
+PATH="$tmp/resolver/bin:$PATH" sh "$tmp/resolver/apply.sh" --installer
+[ "$(cat "$tmp/resolver/target/run/systemd/resolve/stub-resolv.conf")" = 'nameserver 192.0.2.53' ]
+# Invalid calls and stale staging must fail before invoking the target.
+if sh "$tmp/resolver/apply.sh" unexpected > "$tmp/args.log" 2>&1; then
+  echo 'invalid apply mode accepted' >&2; exit 1
+fi
+mkdir "$tmp/resolver/target/tmp/fungos-installer"
+if PATH="$tmp/resolver/bin:$PATH" sh "$tmp/resolver/apply.sh" --installer > "$tmp/staging.log" 2>&1; then
+  echo 'stale installer staging accepted' >&2; exit 1
+fi
+grep -q 'installer staging already exists' "$tmp/staging.log"
+for preseed in interactive test; do
+  grep -Fq '/bin/sh /cdrom/fungos/apply.sh --installer' "$dir/$preseed.preseed"
+done
+echo 'installer syntax, firmware rejection, positive disk guard, ambiguity rejection, identity rejection, public preseed safety, outer resolver transition: passed'

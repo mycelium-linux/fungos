@@ -2,10 +2,22 @@
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 payload=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+case "$#:$*" in
+  0:) ;;
+  1:--installer)
+    # Own the outer d-i transition here: in-target unmounts its temporary /run
+    # before the installer's finishing APT operations access the target again.
+    [ -f /target/etc/debian_version ] || { echo 'installer target missing' >&2; exit 1; }
+    [ ! -e /target/tmp/fungos-installer ] || { echo 'installer staging already exists' >&2; exit 1; }
+    cp -a "$payload" /target/tmp/fungos-installer
+    in-target /bin/sh /tmp/fungos-installer/apply.sh
+    mkdir -p /target/run/systemd/resolve
+    cp -L /etc/resolv.conf /target/run/systemd/resolve/stub-resolv.conf
+    exit 0
+    ;;
+  *) echo 'usage: apply.sh [--installer]' >&2; exit 1 ;;
+esac
 . "$payload/release.env"
-# Save d-i's usable resolver before systemd-resolved's package changes its
-# symlink. A separate staging file also avoids copying a stub onto itself.
-cp -L /etc/resolv.conf "$payload/installer-resolv.conf"
 # d-i's base system comes from the locked ISO; converge all installed packages to
 # the same signed snapshot as base/rootfs builds before copying common hooks.
 printf 'Acquire::Check-Valid-Until "false";\nAPT::Install-Recommends "false";\n' > /etc/apt/apt.conf.d/90-fungos
@@ -33,11 +45,8 @@ sh "$payload/apply-overlay.sh" "$payload/rootfs" /
 chmod 0755 /usr/libexec/fungos-first-contact /usr/libexec/fungos-verify-update
 mkdir -p /usr/lib/fungos/first-contact.d /usr/lib/fungos/update-verifiers.d /usr/share/fungos/installer
 systemctl enable systemd-networkd systemd-resolved ssh fungos-first-contact
-# d-i still runs in this chroot after the late command. Keep its working DNS
-# available behind the final symlink until first boot replaces /run and resolved
-# writes its real stub configuration. Do not embed installer DNS in /etc.
-mkdir -p /run/systemd/resolve
-cp "$payload/installer-resolv.conf" /run/systemd/resolve/stub-resolv.conf
+# The outer installer mode restores finishing DNS after in-target returns.
+# At first boot resolved owns this volatile path; no installer DNS lives in /etc.
 rm -f /etc/resolv.conf
 ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 dpkg-query -W -f='${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n' | LC_ALL=C sort > /usr/share/fungos/installer/installed.tsv
