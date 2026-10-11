@@ -263,3 +263,42 @@ The Debian `systemd-ssh-generator` AF_VSOCK CID warning remains visible. These
 checks do not establish whole-system unit health, a completed public interactive
 installation, production enrollment, personal certificate SSH, Secure Boot or
 real component update/rollback. Those gates remain open.
+
+## QA10 public installation and functional first boot — 11 October 2026
+
+ISO `fungos-headless-edge-qa10-amd64.iso`, SHA-256
+`064f5ba07d8cc6ad0dc75164b0d7b12a91e6636688a9810161c7fb8b19f7e18a`,
+was built from `eb02b67022f728d030bac523bea939f58f93ab9f` with the
+same owner-package manifest as QA8. The real UEFI **Install** path completed
+against a new disposable 12 GiB virtual disk, without an external preseed,
+claim, shared filesystem, port forward or injected boot kernel. Account and
+partition confirmation were interactive. No physical or production disk changed.
+
+Installed-disk-only first boot reported `running`, zero failed units, and active
+SSH, networkd, resolved and Unibus router. DHCP assigned an address and default
+route; resolved successfully queried snapshot.debian.org. No dhcpcd process
+remained and `/etc/network/interfaces` contained only loopback configuration.
+Mycelium and first-contact were correctly condition-skipped without enrollment.
+The Mycelium, router and unibusctl executable hashes matched the QA8 owner
+packages. The nonfatal systemd SSH-generator AF_VSOCK warning remained visible.
+The guest was powered off after checks; the unrelated display-edge VM was untouched.
+
+**Not accepted as a release:** although installation completed, finishing APT
+still emitted snapshot.debian.org DNS failures after the late-command chroot
+closed. Fix `3dbfe8e92fa694598bab72201a7d7a4135ecea09` moves resolver restoration
+to the outer installer phase and shares that entry point between public and
+private installs. Its regression simulates removal of the temporary chroot
+`/run`; installer checks pass. A newly built image must verify the complete
+transition. QA10 does not prove this repair or inherit QA8's access/update gates.
+
+Private evidence is retained under
+`/home/ajmwagar/.cache/fungos-headless-qa10-evidence`:
+
+| Evidence | SHA-256 |
+|---|---|
+| `public-install.log` | `b7fba2b5353959ffcb92b82ca9b19d3fcf147feef54f3bc251c4b9cc96a2ae72` |
+| `public-health.log` | `1fe96543441814c78a52df80722e8a4c95d3beedcfea77b2fb08d75d06a1f00c` |
+
+The QA10 ISO and test disk remain temporary build-host artifacts, not public
+downloads or durable release copies. Source/notices closure, final-image
+BIOS/UEFI/runtime qualification, signing recovery and publication remain open.
