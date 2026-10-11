@@ -71,8 +71,11 @@ rollback and reboot against the exact final bytes.
   establish completeness or permission. The owner confirmed dual licensing on
   2026-10-11; Unibus's isolated packaging branch now declares
   `MIT OR Apache-2.0` and retains both license texts. Third-party material is not
-  relicensed. Reviewed notices
-  and corresponding sources for the actual locked router/CLI build remain gates.
+  relicensed. The actual locked router/CLI package now retains reviewed original
+  notices and an offline-checkable source archive; exact hashes and coverage
+  limits are in [Unibus notice evidence](../release/UNIBUS-NOTICES.md).
+  This resolves the preparatory package-input work, not the installed-service
+  or combined-image update/rollback gates.
 - Generic claim delivery installs exactly one executable adapter at
   `/usr/lib/fungos/first-contact.d/`, consume private claim material outside the
   ISO and preserves the common first-contact service's existing sandbox.
