@@ -3,6 +3,9 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 payload=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$payload/release.env"
+# Save d-i's usable resolver before systemd-resolved's package changes its
+# symlink. A separate staging file also avoids copying a stub onto itself.
+cp -L /etc/resolv.conf "$payload/installer-resolv.conf"
 # d-i's base system comes from the locked ISO; converge all installed packages to
 # the same signed snapshot as base/rootfs builds before copying common hooks.
 printf 'Acquire::Check-Valid-Until "false";\nAPT::Install-Recommends "false";\n' > /etc/apt/apt.conf.d/90-fungos
@@ -34,7 +37,7 @@ systemctl enable systemd-networkd systemd-resolved ssh fungos-first-contact
 # available behind the final symlink until first boot replaces /run and resolved
 # writes its real stub configuration. Do not embed installer DNS in /etc.
 mkdir -p /run/systemd/resolve
-cp -L /etc/resolv.conf /run/systemd/resolve/stub-resolv.conf
+cp "$payload/installer-resolv.conf" /run/systemd/resolve/stub-resolv.conf
 rm -f /etc/resolv.conf
 ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 dpkg-query -W -f='${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n' | LC_ALL=C sort > /usr/share/fungos/installer/installed.tsv

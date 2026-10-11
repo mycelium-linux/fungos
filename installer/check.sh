@@ -54,12 +54,18 @@ fi
 grep -Fq 'cat "$script_dir/interactive.preseed"' "$dir/qemu-proof.sh"
 # Exercise the actual resolver transition in an isolated filesystem. The
 # installer must retain working DNS while leaving /etc pointed at volatile /run.
-mkdir -p "$tmp/resolver/etc"
+mkdir -p "$tmp/resolver/etc" "$tmp/resolver/payload"
 printf 'nameserver 192.0.2.53\n' > "$tmp/resolver/etc/resolv.conf"
-sed -n '/^mkdir -p \/run\/systemd\/resolve$/,/^ln -s \/run\/systemd\/resolve\/stub-resolv.conf \/etc\/resolv.conf$/p' "$dir/apply.sh" |
+{
+  grep -F 'cp -L /etc/resolv.conf "$payload/installer-resolv.conf"' "$dir/apply.sh"
+  sed -n '/^mkdir -p \/run\/systemd\/resolve$/,/^ln -s \/run\/systemd\/resolve\/stub-resolv.conf \/etc\/resolv.conf$/p' "$dir/apply.sh"
+} |
   sed "s@/etc/resolv.conf@$tmp/resolver/etc/resolv.conf@g; s@/run/systemd/resolve@$tmp/resolver/run/systemd/resolve@g" > "$tmp/resolver-transition.sh"
-sh "$tmp/resolver-transition.sh"
+payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
 [ -L "$tmp/resolver/etc/resolv.conf" ]
 [ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
 [ "$(readlink "$tmp/resolver/etc/resolv.conf")" = "$tmp/resolver/run/systemd/resolve/stub-resolv.conf" ]
+# Also exercise a preexisting stub symlink, not just d-i's regular resolver.
+payload="$tmp/resolver/payload" sh "$tmp/resolver-transition.sh"
+[ "$(cat "$tmp/resolver/etc/resolv.conf")" = 'nameserver 192.0.2.53' ]
 echo 'installer syntax, firmware rejection, positive disk guard, ambiguity rejection, identity rejection, public preseed safety: passed'
