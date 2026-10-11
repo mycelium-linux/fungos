@@ -54,23 +54,27 @@ the component manifest hash. Operational qualification still must exercise
 boot, enrollment, personal SSH, real authorized Unibus delivery, update,
 rollback and reboot against the exact final bytes.
 
-## Owner contracts still missing (2026-10-09)
+## Owner contract status (2026-10-11)
 
-- Mycelium currently has no Debian owner packager. Its enrollment code copies
-  its executable into the peer home and generates a native service; that must
-  support packaged enrollment without creating a second mutable installation.
-  The existing QEMU first-contact adapter is QEMU-specific and calls that native
-  path. Do not wrap it in a `.deb` and claim APT owns the resulting installation.
+- Mycelium's genuine owner Debian package, packaged first-contact adapter and
+  installed certificate SSH have been qualified. See
+  [package evidence](MYCELIUM-PACKAGE-QUALIFICATION.md),
+  [signed APT evidence](MYCELIUM-SIGNED-APT-QUALIFICATION.md) and
+  [published qualification](../release/PUBLIC-QUALIFICATION.md).
+  These are Mycelium-only results, not proof for a new combined image.
 - Unibus owns the real packager at
   `crates/unibus-router/examples/linux_core_deb.rs` and documents it in
   `docs/linux-core-package.md`. Its router/CLI package has a loopback-only
   default, empty grants, a dynamic unprivileged systemd identity and no implicit
-  activation. It needs owner copyright/license payloads before this gate passes.
-  Its current workspace declares `LicenseRef-Proprietary`; redistribution must
-  be explicitly resolved by its owner, not silently labeled MIT/Apache here.
-- Generic claim delivery must install exactly one executable adapter at
+  activation. The isolated owner packaging branch now requires an explicit
+  copyright/notice file and installs it verbatim; input validation does not
+  establish completeness or permission. The committed owner workspace still
+  declares `LicenseRef-Proprietary`; pending MIT/Apache changes are uncommitted
+  and must be confirmed by the owner before redistribution. Reviewed notices
+  and corresponding sources for the actual locked router/CLI build remain gates.
+- Generic claim delivery installs exactly one executable adapter at
   `/usr/lib/fungos/first-contact.d/`, consume private claim material outside the
-  ISO and preserve the common first-contact service's existing sandbox.
+  ISO and preserves the common first-contact service's existing sandbox.
 - Optional Canvas requires owner-built compositor/adapters/theme/assets together;
   this bounded headless-edge gate does not pretend to supply Canvas packages.
 
