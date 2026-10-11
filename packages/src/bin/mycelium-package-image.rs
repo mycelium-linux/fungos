@@ -30,6 +30,11 @@ fn put(root: &Path, relative: &str, content: &str) -> Result<()> {
 fn regular(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok_and(|m| m.is_file())
 }
+fn delivery_dropin(router: &str, cli: &str) -> String {
+    // The owner proof deliberately restarts the router. Requires= would stop
+    // this proof during that restart, killing it before policy restoration.
+    format!("[Unit]\nAfter=unibus-router.service\nWants=unibus-router.service\n\n[Service]\nExecStartPre=/opt/fungos-mycelium-package-qa/unibus-delivery-proof {router} {cli}\n")
+}
 fn main() -> Result<()> {
     let mut args: Vec<_> = std::env::args().skip(1).collect();
     let preinstalled = args.first().is_some_and(|value| value == "--preinstalled");
@@ -157,7 +162,7 @@ fn main() -> Result<()> {
                 qa.join("unibus-delivery-proof"),
                 fs::Permissions::from_mode(0o755),
             )?;
-            put(&root, "etc/systemd/system/fungos-mycelium-package-proof.service.d/20-unibus-delivery.conf", &format!("[Unit]\nAfter=unibus-router.service\nRequires=unibus-router.service\n\n[Service]\nExecStartPre=/opt/fungos-mycelium-package-qa/unibus-delivery-proof {} {}\n", digests[0], digests[1]))?;
+            put(&root, "etc/systemd/system/fungos-mycelium-package-proof.service.d/20-unibus-delivery.conf", &delivery_dropin(&digests[0], &digests[1]))?;
         }
         run(
             "chroot",
@@ -184,6 +189,15 @@ fn main() -> Result<()> {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn router_restart_cannot_cancel_policy_restoration() {
+        let unit = super::delivery_dropin("router-digest", "cli-digest");
+        assert!(unit.contains("After=unibus-router.service\n"));
+        assert!(unit.contains("Wants=unibus-router.service\n"));
+        assert!(!unit.contains("Requires="));
+        assert!(!unit.contains("BindsTo="));
+        assert!(unit.contains("unibus-delivery-proof router-digest cli-digest\n"));
+    }
     use super::*;
     #[test]
     fn refuses_device_and_symlink_inputs() {
