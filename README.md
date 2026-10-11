@@ -73,6 +73,14 @@ See the [persistent QEMU dogfood runbook](docs/edge-dogfood.md) and
 workspace retention and recovery checks. These procedures are qualifications,
 not a production installer or permission to run fault tests on your devices.
 
+## Local intranet
+
+The optional [intranet integration](docs/intranet.md) keeps mesh/site DNS in
+Mycelium and delegates workload discovery to Shroud. Palisade supplies stable
+HTTP entrances; Unibus can consume service observations without being required
+for browser access. DNS planning is implemented locally; persistent activation
+and image integration are not yet qualified.
+
 ## License
 
 First-party code and documentation: **MIT OR Apache-2.0**, at your option.
