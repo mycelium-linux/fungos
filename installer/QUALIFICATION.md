@@ -124,10 +124,59 @@ temporary raw copy was removed. It remains private at
 Reproducible extraction/build caches were removed; source archives and check
 logs remain retained. Tmpfs disks are temporary, not an off-device backup.
 
-Still open for v0.1: full installation through the **unmodified public
-interactive** flow, whole-system first-boot health assessment, final source and
-notice publication, release signing/recovery handoff and final torrent/download
-promotion. Ordinary UEFI does not imply Secure Boot or compliance certification.
+### Public interactive install and first-boot findings
+
+The unmodified QA8 ISO subsequently completed its real UEFI **Install** menu,
+language/keyboard/account/timezone choices, guided partitioning and explicit
+disk-write confirmation on a new 12 GiB virtual disk. The write confirmation
+defaulted to **No**. Root was locked; the separately created local user could
+authenticate and use sudo. No external preseed, injected kernel/initrd, shared
+filesystem, physical disk or fleet credentials were used. A separate disk-only
+invocation booted kernel `6.12.111+deb13-amd64` and reached login.
+
+First-boot assessment found zero failed units and `is-system-running=running`.
+SSH, networkd, resolved and the genuine unprivileged Unibus router were active.
+Wired DHCP, a default route and an actual DNS query worked. Unibus retained its
+loopback-only listener and empty routes/nodes; executable hashes matched the
+owner packages. Mycelium and first-contact were correctly condition-skipped
+without a claim. The known AF_VSOCK generator error remained in the journal;
+no security scanner was run, so CVE/STIG clearance is **unknown**, not passed.
+
+This public path exposed release-blocking divergence that the unattended path
+did not cover:
+
+- Debian's software picker selected GNOME by default; all optional tasks were
+  manually deselected for this headless test.
+- Before profile convergence, the selected rolling Debian mirror upgraded
+  packages. For example `dhcpcd-base=1:10.1.0-11+deb13u4` was retained: a later
+  snapshot `dist-upgrade` does not downgrade newer packages. This installation
+  is not the locked installed inventory used by the earlier source closure.
+- d-i's ifupdown DHCP configuration competed with networkd. Socket inspection
+  observed both clients on the same interface.
+- Linking resolved's stub before its service ran in the installer chroot broke
+  DNS during d-i's subsequent APT finishing step, which logged fetch warnings.
+
+Fix `71b2271` shares the public package policy with the private harness: no
+rolling mirror, optional tasks or pre-profile upgrade. Fix `1ecdf1b` replaces
+inherited physical-interface ifupdown configuration with loopback only and
+retains working installer DNS behind the volatile stub path until reboot.
+Syntax, public-preseed safety, resolver-transition and Linux overlay replacement
+regressions passed. **These changes alter the ISO; QA8's runtime evidence does
+not qualify the new bytes.** The public guest shut down cleanly; its private
+disk/password remain outside release artifacts.
+
+| Retained public evidence | SHA-256 |
+|---|---|
+| `public-install.log` | `4bbdc66dabbe70a269c6d5cfce2f29c1eb339a746780b265226d9c34c25bfb8e` |
+| `public-health.log` | `43e52e90aa5544e9e288be46bd9ab1c7d4121c7c9070ef1fc6b0b740484a6499` |
+| `public-disk-confirmation.png` | `05a70fd55e95d9206f0a4ffa6a251b897f84da3aab2788a4d31308f630060d1c` |
+| `public-task-selection.png` | `f004b7ca7f0103c087056125df6409d05e6bf6b311df1c5e55fc7ba46e36ee85` |
+| `public-install-complete.png` | `0e7f0d2472f53d9fbf17c1c5d37b1b4cdcf8741d39b48e1d69dffe28d5a59a3d` |
+
+Still open for v0.1: fresh image qualification after these fixes, final source
+and notice publication, release signing/recovery handoff and final
+torrent/download promotion. Ordinary UEFI does not imply Secure Boot or
+compliance certification.
 
 ## Preparatory public UEFI entry (2026-10-09)
 
