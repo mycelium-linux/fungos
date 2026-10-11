@@ -20,11 +20,13 @@ This repository contains the generic [base filesystem builder](base/README.md),
 capability-derived Debian package sets and `base`, `edge`, `headless-edge`, and
 `cloud` declarations for `amd64` and `arm64`.
 
-The builder produces a **rootfs tarball**, not a ready-to-flash SD card or
-installer ISO. Board firmware, kernels, boot installation, enrollment and
-signed first-party executables remain separate integration steps. The existing
-QEMU, Pi and cloud qualification work is being separated from the Mycelium
-development checkout; it is not all migrated here yet.
+The base builder produces a **rootfs tarball**. Separate
+[amd64 installer tooling](installer/README.md) assembles a Debian installer ISO
+with the same profile and optional owner-built packages. The narrow
+[Mycelium-only qualification download](release/PUBLIC-QUALIFICATION.md) is public;
+the combined Mycelium/Unibus headless-edge candidate is still being qualified.
+Neither is a supported v0.1 release. Pi board firmware, kernels, SD-card assembly
+and physical hardware qualification remain separate integration steps.
 
 The [signed APT publisher](packages/README.md) produces immutable, multi-architecture
 repository generations. Its [qualification](packages/QUALIFICATION.md) exercises
@@ -32,9 +34,9 @@ real Debian client verification; the FPL Cloud origin is not deployed yet.
 
 The [amd64 installer tooling](installer/README.md) and
 [torrent release preparer](release/README.md) live here as well. The installer
-shares the base profile and overlay rather than maintaining another package
-list. Its tested Debian 13 input requires the shared baseline to be refreshed
-before building; this import does not claim a qualified release candidate.
+shares the base profile, pinned snapshot and overlay rather than maintaining
+another package list. See [image qualification](installer/QUALIFICATION.md)
+for exact tested bytes, public-install findings and remaining release gates.
 Torrent preparation is local packaging, not publication or release signing.
 
 ## Check and build
