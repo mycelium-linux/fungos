@@ -222,8 +222,8 @@ fn main() -> Result<()> {
     }
     wait_health()?;
     let before = identity()?;
-    if version()? == candidate {
-        require(sha(BIN)? == "60664012ba7b7b3a7c3ece05975de582caa9b6cc207a4f1b3ce535f17d3c2fa8", "fresh baseline is not the exact qualified qa5 executable")?;
+    if qualified_baseline(&version()?) {
+        require(sha(BIN)? == "60664012ba7b7b3a7c3ece05975de582caa9b6cc207a4f1b3ce535f17d3c2fa8", "fresh baseline is not the exact retained qa5/qa6 executable")?;
         run("apt-get", &["update", "--error-on=any"])?;
         let (path, digest) = plan("0.1.0")?;
         apply(&path, &digest)?;
@@ -361,8 +361,18 @@ fn main() -> Result<()> {
     run("systemctl", &["--no-block", "reboot"])?;
     Ok(())
 }
+fn qualified_baseline(version: &str) -> bool {
+    matches!(version, "0.1.0+qualification5" | "0.1.0+qualification6")
+}
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn recognizes_only_retained_owner_baselines() {
+        assert!(super::qualified_baseline("0.1.0+qualification5"));
+        assert!(super::qualified_baseline("0.1.0+qualification6"));
+        assert!(!super::qualified_baseline("0.1.0+qualification7"));
+        assert!(!super::qualified_baseline("0.1.0"));
+    }
     #[test]
     fn plan_digest_requires_exact_hex() {
         let expected = "a".repeat(64);
