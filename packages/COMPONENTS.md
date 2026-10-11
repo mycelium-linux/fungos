@@ -68,9 +68,10 @@ rollback and reboot against the exact final bytes.
   default, empty grants, a dynamic unprivileged systemd identity and no implicit
   activation. The isolated owner packaging branch now requires an explicit
   copyright/notice file and installs it verbatim; input validation does not
-  establish completeness or permission. The committed owner workspace still
-  declares `LicenseRef-Proprietary`; pending MIT/Apache changes are uncommitted
-  and must be confirmed by the owner before redistribution. Reviewed notices
+  establish completeness or permission. The owner confirmed dual licensing on
+  2026-10-11; Unibus's isolated packaging branch now declares
+  `MIT OR Apache-2.0` and retains both license texts. Third-party material is not
+  relicensed. Reviewed notices
   and corresponding sources for the actual locked router/CLI build remain gates.
 - Generic claim delivery installs exactly one executable adapter at
   `/usr/lib/fungos/first-contact.d/`, consume private claim material outside the
