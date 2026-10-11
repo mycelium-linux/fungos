@@ -21,6 +21,37 @@ private key, password or claim belongs in public media. Retain source/license
 inputs for genuine component packages; fixtures cannot prove the runtime gates.
 Secure Boot is separate from ordinary UEFI qualification.
 
+## Combined headless-edge install (2026-10-11 UTC)
+
+QA8 includes genuine Mycelium and Unibus owner packages with APT-only ownership.
+It was built from fungOS source `601a03a564b55767162815f0161e905e5572e90d`,
+trixie snapshot `20261009T000000Z`, and verified Debian 13.1.0 installer input.
+
+- ISO SHA-256: `521bbb5672d4a098a03c9e92474abca2852104f972a611cc656e77b09e15859c`.
+- Component manifest SHA-256: `8561f4ca0086926557865f3bd6eb2e81dd40fb3ab07eb966c2861fdf107b938c`.
+- Mycelium archive SHA-256: `c6b957afe046cec084b89383cabf1b69b7ad23ae5baf8711667659c03fffa023`.
+- Unibus owner inputs: [exact package/source evidence](../release/UNIBUS-NOTICES.md).
+
+Both fresh `qemu-proof.sh` runs exited zero: profile convergence emitted
+`FUNGOS_INSTALL_COMPLETE`, then each disk-only boot reached `fungos login:`.
+The UEFI run used a private OVMF variables file and booted the installed GPT/ESP
+loader. No physical disks or preexisting guests were changed.
+
+| Retained evidence | SHA-256 |
+|---|---|
+| `bios-install.log` | `3c2f540b2cf8da5378357edf995d550f6c4a3e955de34461ed2a7ffed78e9aa8` |
+| `bios-boot.log` | `3a335f87a17e6a096acddd7fb29f517e12af35da3d27c2e9376638f0f8ad779b` |
+| `uefi-install.log` | `9141f62bd7924a72d1b45176738d6037a4a1a5031dcd3373d8d6e58be352c229` |
+| `uefi-boot.log` | `92d7bceee9b23542ea74a45a33c22b8f26d752b5f1a7b496520e3207e0ca34e7` |
+
+Logs and artifacts are retained on Agora under
+`/home/ajmwagar/.cache/fungos-headless-qa8.fTarSb/`. Temporary test disks are
+under `/dev/shm/fungos-unibus-notices.6nHVu8/`; they are not durable artifacts.
+The known virtual AF_VSOCK SSH-generator warning remains visible. These results
+do not prove whole-system health, public interactive installation, personal SSH,
+authenticated Unibus delivery, signed component update/rollback or Secure Boot.
+They are local qualification evidence, not a v0.1 release announcement.
+
 ## Preparatory public UEFI entry (2026-10-09)
 
 The retained ISO from the earlier BIOS experiment has SHA-256
