@@ -1,5 +1,10 @@
 //! Portable device capability contracts and keyboard illumination policy.
 //! Input events intentionally carry activity only, never key identity/content.
+pub mod services;
+pub use services::{
+    AccessoryFailure, AccessoryInventory, AccessoryItem, AccessoryType, AccessoryView,
+    AudioFailure, AudioOutput, AudioRouteControl, BatterySample,
+};
 use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
