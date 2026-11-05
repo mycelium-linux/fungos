@@ -16,10 +16,42 @@ pub enum AccessoryType {
     Other,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ChargingState {
+    Unknown,
+    Charging,
+    Discharging,
+    NotCharging,
+    Full,
+}
+
+/// The sysfs directory is provenance, not a writable control handle.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BatteryProvenance {
+    LinuxPowerSupply(std::path::PathBuf),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BatterySample {
-    pub percent: u8,
-    pub charging: bool,
+    /// Only the kernel's capacity attribute; never inferred from voltage.
+    pub percent: Option<u8>,
+    pub charging: ChargingState,
+    pub voltage_microvolts: Option<u32>,
+    pub current_microamps: Option<i32>,
+    pub temperature_deci_celsius: Option<i32>,
+    pub provenance: BatteryProvenance,
+    /// Same monotonic clock domain as the caller; not wall time or file mtime.
     pub observed_monotonic_ms: u64,
+}
+impl BatterySample {
+    pub fn check_freshness(&self, now_ms: u64, max_age_ms: u64) -> Result<(), AccessoryFailure> {
+        let age = now_ms
+            .checked_sub(self.observed_monotonic_ms)
+            .ok_or(AccessoryFailure::InvalidTime)?;
+        if age > max_age_ms {
+            return Err(AccessoryFailure::Stale);
+        }
+        Ok(())
+    }
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccessoryView {
@@ -32,6 +64,7 @@ pub enum AccessoryFailure {
     Stale,
     Denied,
     Backend,
+    InvalidTime,
 }
 pub trait AccessoryInventory: Send + Sync {
     fn snapshot(
@@ -62,6 +95,19 @@ pub trait AudioRouteControl: Send + Sync {
     fn set_volume(&self, identity: &str, volume_percent: u8) -> Result<(), AudioFailure>;
 }
 
+/// No qualified production volume owner is currently bound. This adapter does
+/// no I/O; it never substitutes route state, a requested target or a fake level.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct UnavailableAudioOwner;
+impl AudioRouteControl for UnavailableAudioOwner {
+    fn outputs(&self) -> Result<Vec<AudioOutput>, AudioFailure> {
+        Err(AudioFailure::Unavailable)
+    }
+    fn set_volume(&self, _: &str, _: u8) -> Result<(), AudioFailure> {
+        Err(AudioFailure::Unavailable)
+    }
+}
+
 #[cfg(test)]
 mod service_contract_tests {
     use super::*;
@@ -69,13 +115,15 @@ mod service_contract_tests {
     impl AccessoryInventory for Fake {
         fn snapshot(&self, now: u64, age: u64) -> Result<AccessoryView, AccessoryFailure> {
             let battery = BatterySample {
-                percent: 64,
-                charging: true,
+                percent: Some(64),
+                charging: ChargingState::Charging,
+                voltage_microvolts: None,
+                current_microamps: None,
+                temperature_deci_celsius: None,
+                provenance: BatteryProvenance::LinuxPowerSupply("/synthetic/BAT0".into()),
                 observed_monotonic_ms: now.saturating_sub(4),
             };
-            if now.saturating_sub(battery.observed_monotonic_ms) > age {
-                return Err(AccessoryFailure::Stale);
-            }
+            battery.check_freshness(now, age)?;
             Ok(AccessoryView {
                 items: vec![AccessoryItem {
                     identity: "fake-accessory".into(),
@@ -124,7 +172,7 @@ mod service_contract_tests {
         let f = Fake;
         let v = f.snapshot(100, 4).unwrap();
         assert_eq!(v.items.len(), 1);
-        assert_eq!(v.battery.unwrap().percent, 64);
+        assert_eq!(v.battery.unwrap().percent, Some(64));
         assert_eq!(f.snapshot(100, 3), Err(AccessoryFailure::Stale));
         assert_eq!(Missing.snapshot(0, 0), Err(AccessoryFailure::Unavailable));
     }
@@ -138,5 +186,15 @@ mod service_contract_tests {
             Err(AudioFailure::InvalidVolume)
         );
         assert_eq!(Missing.outputs(), Err(AudioFailure::Unavailable));
+        assert_eq!(
+            UnavailableAudioOwner.outputs(),
+            Err(AudioFailure::Unavailable)
+        );
+        for target in [0, 50, 100, 255] {
+            assert_eq!(
+                UnavailableAudioOwner.set_volume("speaker", target),
+                Err(AudioFailure::Unavailable)
+            );
+        }
     }
 }

@@ -1,0 +1,91 @@
+
+/Users/ajmwagar/Documents/src/reversal/cat-s22/out/vmlinux.bin:     file format binary
+
+
+Disassembly of section .data:
+
+c0a9497c <.data+0xa8c97c>:
+c0a9497c:	e92d47f0 	push	{r4, r5, r6, r7, r8, r9, sl, lr}
+c0a94980:	e1a04003 	mov	r4, r3
+c0a94984:	e3e03015 	mvn	r3, #21
+c0a94988:	e3540000 	cmp	r4, #0
+c0a9498c:	0a000004 	beq	0xc0a949a4
+c0a94990:	e5940000 	ldr	r0, [r4]
+c0a94994:	e3500000 	cmp	r0, #0
+c0a94998:	159d9020 	ldrne	r9, [sp, #32]
+c0a9499c:	13590000 	cmpne	r9, #0
+c0a949a0:	1a000001 	bne	0xc0a949ac
+c0a949a4:	e1a00003 	mov	r0, r3
+c0a949a8:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+c0a949ac:	e3520000 	cmp	r2, #0
+c0a949b0:	15940004 	ldrne	r0, [r4, #4]
+c0a949b4:	13500000 	cmpne	r0, #0
+c0a949b8:	0afffff9 	beq	0xc0a949a4
+c0a949bc:	e5940024 	ldr	r0, [r4, #36]	@ 0x24
+c0a949c0:	e2898008 	add	r8, r9, #8
+c0a949c4:	e0840280 	add	r0, r4, r0, lsl #5
+c0a949c8:	e2807028 	add	r7, r0, #40	@ 0x28
+c0a949cc:	e1c024d0 	ldrd	r2, [r0, #64]	@ 0x40
+c0a949d0:	e5905034 	ldr	r5, [r0, #52]	@ 0x34
+c0a949d4:	e0516002 	subs	r6, r1, r2
+c0a949d8:	e0e3cfc1 	rsc	ip, r3, r1, asr #31
+c0a949dc:	e897008c 	ldm	r7, {r2, r3, r7}
+c0a949e0:	e0810796 	umull	r0, r1, r6, r7
+c0a949e4:	e0211596 	mla	r1, r6, r5, r1
+c0a949e8:	e021179c 	mla	r1, ip, r7, r1
+c0a949ec:	ebe97965 	bl	0xc04f2f88
+c0a949f0:	e1a03001 	mov	r3, r1
+c0a949f4:	e5941024 	ldr	r1, [r4, #36]	@ 0x24
+c0a949f8:	e3510000 	cmp	r1, #0
+c0a949fc:	1a000003 	bne	0xc0a94a10
+c0a94a00:	e5942030 	ldr	r2, [r4, #48]	@ 0x30
+c0a94a04:	e5941034 	ldr	r1, [r4, #52]	@ 0x34
+c0a94a08:	e0920000 	adds	r0, r2, r0
+c0a94a0c:	e0a13003 	adc	r3, r1, r3
+c0a94a10:	e2702000 	rsbs	r2, r0, #0
+c0a94a14:	e2894010 	add	r4, r9, #16
+c0a94a18:	e2f32000 	rscs	r2, r3, #0
+c0a94a1c:	e3a01000 	mov	r1, #0
+c0a94a20:	e3a02000 	mov	r2, #0
+c0a94a24:	b3002001 	movwlt	r2, #1
+c0a94a28:	e3520000 	cmp	r2, #0
+c0a94a2c:	01a03002 	moveq	r3, r2
+c0a94a30:	11a02000 	movne	r2, r0
+c0a94a34:	e30005fe 	movw	r0, #1534	@ 0x5fe
+c0a94a38:	e1520000 	cmp	r2, r0
+c0a94a3c:	e1c820f0 	strd	r2, [r8]
+c0a94a40:	da000002 	ble	0xc0a94a50
+c0a94a44:	e3e01000 	mvn	r1, #0
+c0a94a48:	e3e000c7 	mvn	r0, #199	@ 0xc7
+c0a94a4c:	ea00001a 	b	0xc0a94abc
+c0a94a50:	e30a0c24 	movw	r0, #44068	@ 0xac24
+c0a94a54:	e34c00f8 	movt	r0, #49400	@ 0xc0f8
+c0a94a58:	e2800008 	add	r0, r0, #8
+c0a94a5c:	e2811001 	add	r1, r1, #1
+c0a94a60:	e3510033 	cmp	r1, #51	@ 0x33
+c0a94a64:	0a000004 	beq	0xc0a94a7c
+c0a94a68:	e4903008 	ldr	r3, [r0], #8
+c0a94a6c:	e1530002 	cmp	r3, r2
+c0a94a70:	aafffff9 	bge	0xc0a94a5c
+c0a94a74:	e3510033 	cmp	r1, #51	@ 0x33
+c0a94a78:	1a000004 	bne	0xc0a94a90
+c0a94a7c:	e3a03000 	mov	r3, #0
+c0a94a80:	e3a02e32 	mov	r2, #800	@ 0x320
+c0a94a84:	e1a00003 	mov	r0, r3
+c0a94a88:	e1c420f0 	strd	r2, [r4]
+c0a94a8c:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+c0a94a90:	e5101010 	ldr	r1, [r0, #-16]
+c0a94a94:	e510500c 	ldr	r5, [r0, #-12]
+c0a94a98:	e5103008 	ldr	r3, [r0, #-8]
+c0a94a9c:	e0422001 	sub	r2, r2, r1
+c0a94aa0:	e5100004 	ldr	r0, [r0, #-4]
+c0a94aa4:	e0431001 	sub	r1, r3, r1
+c0a94aa8:	e0400005 	sub	r0, r0, r5
+c0a94aac:	e0000092 	mul	r0, r2, r0
+c0a94ab0:	ebe92b32 	bl	0xc04df780
+c0a94ab4:	e0800005 	add	r0, r0, r5
+c0a94ab8:	e1a01fc0 	asr	r1, r0, #31
+c0a94abc:	e3a03000 	mov	r3, #0
+c0a94ac0:	e1c400f0 	strd	r0, [r4]
+c0a94ac4:	e1a00003 	mov	r0, r3
+c0a94ac8:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}

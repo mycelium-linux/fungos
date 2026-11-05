@@ -1,9 +1,17 @@
 //! Portable device capability contracts and keyboard illumination policy.
 //! Input events intentionally carry activity only, never key identity/content.
+pub mod battery_profile;
+pub mod battery_transport;
+pub mod estimate_transport;
+pub mod keypad;
+pub mod keypad_transport;
+pub mod lid;
+pub mod lid_transport;
+pub mod power_supply;
 pub mod services;
 pub use services::{
     AccessoryFailure, AccessoryInventory, AccessoryItem, AccessoryType, AccessoryView,
-    AudioFailure, AudioOutput, AudioRouteControl, BatterySample,
+    AudioFailure, AudioOutput, AudioRouteControl, BatteryProvenance, BatterySample, ChargingState,
 };
 use std::time::Duration;
 
