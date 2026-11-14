@@ -1,4 +1,6 @@
 #!/bin/sh
 exec 2>&1
 mkdir -p /run/dbus
+# A pid file left by the initramfs makes dbus-daemon refuse to start.
+rm -f /run/dbus/pid
 exec /usr/bin/dbus-daemon --system --nofork
