@@ -74,6 +74,19 @@ sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs" "$rootfs"
 if [ -d "$base_dir/rootfs-$profile" ]; then
   sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs-$profile" "$rootfs"
 fi
+# The services Debian itself ships stay as they are; anything that appears
+# later (profile overlay, runtime component) is enabled below.
+base_services=$(ls "$rootfs/etc/sv" 2>/dev/null || true)
+# Runtime components are owner-built .debs (see packages/COMPONENTS.md), not
+# overlay payloads: unpack them so their files land like a package would,
+# without running maintainer scripts.
+if [ -n "${COMPONENTS_DIR:-}" ]; then
+  for deb in "$COMPONENTS_DIR"/*.deb; do
+    [ -f "$deb" ] || continue
+    dpkg-deb -x "$deb" "$rootfs"
+    printf '%s %s\n' "$(dpkg-deb -f "$deb" Package)" "$(dpkg-deb -f "$deb" Version)" >> "$manifest.components"
+  done
+fi
 chmod 0755 "$rootfs/usr/libexec/fungos-first-contact" "$rootfs/usr/libexec/fungos-verify-update"
 mkdir -p "$rootfs/usr/lib/fungos/first-contact.d" "$rootfs/usr/lib/fungos/update-verifiers.d"
 
@@ -96,13 +109,18 @@ else
   if [ -r "$rootfs/etc/runit/default.runsvdir" ]; then
     runsvdir=$(tr -d '[:space:]' < "$rootfs/etc/runit/default.runsvdir")
   fi
-  if [ -d "$base_dir/rootfs-$profile/etc/sv" ]; then
+  if [ -d "$rootfs/etc/sv" ]; then
     mkdir -p "$rootfs/etc/runit/runsvdir/$runsvdir"
     find "$rootfs/etc/sv" -name run -exec chmod 0755 {} +
-    for service in "$base_dir/rootfs-$profile"/etc/sv/*; do
+    if [ -d "$rootfs/etc/runit/boot-run" ]; then
+      find "$rootfs/etc/runit/boot-run" -name '*.sh' -exec chmod 0755 {} +
+    fi
+    for service in "$rootfs"/etc/sv/*; do
       [ -d "$service" ] || continue
-      ln -sfn "/etc/sv/$(basename "$service")" \
-        "$rootfs/etc/runit/runsvdir/$runsvdir/$(basename "$service")"
+      name=$(basename "$service")
+      [ -f "$service/run" ] || continue
+      printf '%s\n' "$base_services" | grep -Fx "$name" >/dev/null && continue
+      ln -sfn "/etc/sv/$name" "$rootfs/etc/runit/runsvdir/$runsvdir/$name"
     done
   fi
   printf '# Rewritten at boot by the network service (dhcpcd).\n' > "$rootfs/etc/resolv.conf"
