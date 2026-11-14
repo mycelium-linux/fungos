@@ -1,0 +1,7 @@
+#!/bin/sh
+exec 2>&1
+mkdir -p /run/sshd
+# The image ships without host keys (build.sh deletes them); there is no init
+# system to regenerate them on first boot, so this script owns that step.
+[ -f /etc/ssh/ssh_host_ed25519_key ] || ssh-keygen -A
+exec /usr/sbin/sshd -D -e

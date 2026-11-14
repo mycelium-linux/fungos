@@ -1,0 +1,8 @@
+#!/bin/sh
+exec 2>&1
+# wcn36xx registers wlan0 only once the WCNSS firmware is running. Wait for the
+# interface and for a config, so a missing config cannot spin the supervisor.
+while [ ! -e /sys/class/net/wlan0 ]; do sleep 1; done
+while [ ! -f /etc/wpa_supplicant/wpa_supplicant.conf ]; do sleep 5; done
+exec /usr/sbin/wpa_supplicant -n -s -O /run/wpa_supplicant \
+	-i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf

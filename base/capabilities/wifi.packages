@@ -1,0 +1,6 @@
+# wcn36xx-driven WLAN (CAT S22, QM215). Association is userland: no wpa_supplicant
+# config is shipped, each device profile supplies its own or enrolls at runtime.
+iw
+rfkill
+wireless-regdb
+wpa_supplicant

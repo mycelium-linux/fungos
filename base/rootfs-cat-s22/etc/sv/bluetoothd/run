@@ -1,0 +1,8 @@
+#!/bin/sh
+exec 2>&1
+# runit has no dependency graph, so wait for the bus that dbus creates before
+# exec'ing the daemon; runit restarts us if it ever exits.
+while [ ! -S /run/dbus/system_bus_socket ]; do sleep 1; done
+bluetoothd=/usr/libexec/bluetooth/bluetoothd
+[ -x "$bluetoothd" ] || bluetoothd=/usr/lib/bluetooth/bluetoothd
+exec "$bluetoothd" -n

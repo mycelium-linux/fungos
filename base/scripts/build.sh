@@ -7,8 +7,19 @@ base_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 arch=${1:-}
 profile=${2:-base}
-case "$arch" in amd64|arm64) ;; *) echo "usage: $0 {amd64|arm64} [base|edge|headless-edge|cloud]" >&2; exit 2;; esac
-case "$profile" in base|edge|headless-edge|cloud) ;; *) echo "unsupported profile: $profile" >&2; exit 2;; esac
+case "$arch" in amd64|arm64) ;; *) echo "usage: $0 {amd64|arm64} PROFILE" >&2; exit 2;; esac
+[ -f "$base_dir/profiles/$profile.capabilities" ] || {
+  echo "unsupported profile: $profile (no profiles/$profile.capabilities)" >&2
+  exit 2
+}
+init=systemd
+if [ -f "$base_dir/profiles/$profile.init" ]; then
+  init=$(tr -d '[:space:]' < "$base_dir/profiles/$profile.init")
+fi
+case "$init" in
+  systemd|runit) ;;
+  *) echo "unsupported init for $profile: $init" >&2; exit 2;;
+esac
 
 command -v mmdebstrap >/dev/null || { echo "mmdebstrap is required" >&2; exit 1; }
 debian_keyring=/usr/share/keyrings/debian-archive-keyring.gpg
@@ -60,18 +71,36 @@ find "$rootfs/var/lib/apt/lists" -maxdepth 1 -type f -name '*InRelease' -exec cp
 (cd "$release_inputs" && sha256sum *InRelease) > "$release_inputs/SHA256SUMS"
 
 sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs" "$rootfs"
+if [ -d "$base_dir/rootfs-$profile" ]; then
+  sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs-$profile" "$rootfs"
+fi
 chmod 0755 "$rootfs/usr/libexec/fungos-first-contact" "$rootfs/usr/libexec/fungos-verify-update"
-mkdir -p \
-  "$rootfs/etc/systemd/system/multi-user.target.wants" \
-  "$rootfs/etc/systemd/system/network-online.target.wants" \
-  "$rootfs/usr/lib/fungos/first-contact.d" \
-  "$rootfs/usr/lib/fungos/update-verifiers.d"
-ln -sfn /run/systemd/resolve/stub-resolv.conf "$rootfs/etc/resolv.conf"
-ln -sfn /usr/lib/systemd/system/systemd-networkd.service "$rootfs/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
-ln -sfn /usr/lib/systemd/system/systemd-resolved.service "$rootfs/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
-ln -sfn /usr/lib/systemd/system/systemd-networkd-wait-online.service "$rootfs/etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service"
-ln -sfn /usr/lib/systemd/system/ssh.service "$rootfs/etc/systemd/system/multi-user.target.wants/ssh.service"
-ln -sfn /usr/lib/systemd/system/fungos-first-contact.service "$rootfs/etc/systemd/system/multi-user.target.wants/fungos-first-contact.service"
+mkdir -p "$rootfs/usr/lib/fungos/first-contact.d" "$rootfs/usr/lib/fungos/update-verifiers.d"
+
+if [ "$init" = systemd ]; then
+  mkdir -p \
+    "$rootfs/etc/systemd/system/multi-user.target.wants" \
+    "$rootfs/etc/systemd/system/network-online.target.wants"
+  ln -sfn /run/systemd/resolve/stub-resolv.conf "$rootfs/etc/resolv.conf"
+  ln -sfn /usr/lib/systemd/system/systemd-networkd.service "$rootfs/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
+  ln -sfn /usr/lib/systemd/system/systemd-resolved.service "$rootfs/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
+  ln -sfn /usr/lib/systemd/system/systemd-networkd-wait-online.service "$rootfs/etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service"
+  ln -sfn /usr/lib/systemd/system/ssh.service "$rootfs/etc/systemd/system/multi-user.target.wants/ssh.service"
+  ln -sfn /usr/lib/systemd/system/fungos-first-contact.service "$rootfs/etc/systemd/system/multi-user.target.wants/fungos-first-contact.service"
+else
+  # runit: every service shipped under /etc/sv is enabled, and ordering lives
+  # in the run scripts themselves (they wait on the hardware or socket they
+  # need), so there is no separate dependency graph to keep in sync.
+  mkdir -p "$rootfs/etc/service"
+  if [ -d "$rootfs/etc/sv" ]; then
+    find "$rootfs/etc/sv" -name run -exec chmod 0755 {} +
+    for service in "$rootfs"/etc/sv/*; do
+      [ -d "$service" ] || continue
+      ln -sfn "/etc/sv/$(basename "$service")" "$rootfs/etc/service/$(basename "$service")"
+    done
+  fi
+  printf '# Rewritten at boot by the network service (dhcpcd).\n' > "$rootfs/etc/resolv.conf"
+fi
 
 # Remove host-specific and time-varying state. systemd and ssh recreate these on
 # first boot; package indexes are release inputs, not runtime image content.

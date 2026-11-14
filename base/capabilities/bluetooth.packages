@@ -1,0 +1,4 @@
+# BlueZ over the kernel HCI transport (CONFIG_BT_QCOMSMD on CAT S22). bluetoothd
+# needs the system bus, so dbus is owned here rather than by every consumer.
+dbus
+bluez

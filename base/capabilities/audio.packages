@@ -1,0 +1,6 @@
+# Call and playback audio. UCM profiles are data only; the mixer state for a
+# board belongs to its device profile.
+alsa-ucm-conf
+alsa-utils
+pipewire
+wireplumber

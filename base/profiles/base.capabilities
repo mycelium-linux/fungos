@@ -1,4 +1,5 @@
 core
+systemd-init
 networkd
 ssh
 first-contact

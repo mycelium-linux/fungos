@@ -1,0 +1,12 @@
+# CAT S22 (QM215/msm8937) flip phone. Smallest sibling target is 1 GB RAM, so
+# this profile deliberately does not compose @base: no systemd, no resolved.
+# First-party binaries (soil, hyphae, board scripts) arrive as an overlay or a
+# signed package generation, not from Debian.
+audio
+bluetooth
+core
+modem
+net-base
+runit-init
+ssh
+wifi

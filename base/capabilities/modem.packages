@@ -1,0 +1,5 @@
+# Modem sharing and QRTR plumbing. The firmware staging and remoteproc start
+# order stay first-party scripts in the device profile, not packages.
+rmtfs
+libqrtr1
+qrtr-tools

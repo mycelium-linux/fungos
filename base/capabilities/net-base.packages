@@ -1,0 +1,6 @@
+# Links, discovery and a DHCP client. No resolved: the device profiles ship
+# their own init, so the client owns /etc/resolv.conf.
+iproute2
+kmod
+udev
+dhcpcd-base
