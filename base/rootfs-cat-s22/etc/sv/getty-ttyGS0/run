@@ -1,5 +1,0 @@
-#!/bin/sh
-exec 2>&1
-# The USB serial gadget is the only console that exists before udev runs, and
-# the same shell the initramfs offers on ttyGS0.
-exec /sbin/agetty --autologin root -L 115200 ttyGS0 vt100

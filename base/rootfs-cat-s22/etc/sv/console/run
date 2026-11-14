@@ -1,0 +1,27 @@
+#!/bin/sh
+exec 2>&1
+# The USB serial gadget is the recovery line, so it runs a plain shell -- the
+# same thing the initramfs offers on this tty. Exactly one process may read the
+# port: a getty and a shell on the same tty split the input between them, and
+# the loser looks like a dead console. A getty is also the wrong shape here --
+# this line is not a place to authenticate -- and when its autologin does not
+# take effect it leaves a `login:` prompt that consumes every typed command as a
+# username.
+#
+# The gadget tty appears when the USB gadget binds, which can happen after this
+# service starts.
+while [ ! -c /dev/ttyGS0 ]; do sleep 1; done
+exec setsid sh -c '
+	# Open the line from inside the new session, by its leader: that is what
+	# makes ttyGS0 the controlling terminal, and so what lets the tty signal
+	# keys (Ctrl-C) reach the shell.
+	exec </dev/ttyGS0 >/dev/ttyGS0 2>&1
+	# A background child of a non-interactive shell would otherwise read
+	# /dev/null instead of the line.
+	sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1 &
+	shell=$!
+	# Interactive shells ignore SIGTERM, so the service would never stop on its
+	# own. Hang the line up instead, the way a dropping carrier would.
+	trap "kill -HUP $shell 2>/dev/null" TERM HUP INT
+	wait "$shell"
+'
