@@ -39,6 +39,18 @@ another package list. See [image qualification](installer/QUALIFICATION.md)
 for exact tested bytes, public-install findings and remaining release gates.
 Torrent preparation is local packaging, not publication or release signing.
 
+## Packaging
+
+[`packaging/`](packaging/README.md) turns a pinned release set into `.deb`,
+`.rpm`, Arch, AUR and macOS `.pkg`/`.dmg` artifacts. It consumes published
+component tarballs and checksums; the signed APT repository publisher remains in
+[`packages/`](packages/README.md).
+
+```sh
+scripts/package.sh --dry-run
+scripts/package.sh --formats deb --target x86_64-unknown-linux-musl
+```
+
 ## Check and build
 
 Validate the declarations without building an image:
