@@ -101,7 +101,7 @@ for init_file in "$base_dir"/profiles/*.init; do
 done
 
 cat_s22=$("$base_dir/scripts/resolve-packages.sh" "$base_dir/profiles/cat-s22.capabilities")
-for required in alsa-ucm-conf bluez dbus iw libqrtr1 openssh-server pipewire qrtr-tools rmtfs wireplumber wireless-regdb wpa_supplicant; do
+for required in alsa-ucm-conf bluez dbus iw libqrtr1 openssh-server pipewire qrtr-tools rmtfs wireplumber wireless-regdb wpasupplicant; do
   printf '%s\n' "$cat_s22" | grep -Fx "$required" >/dev/null || {
     echo "cat-s22 missing device package: $required" >&2; exit 1; }
 done

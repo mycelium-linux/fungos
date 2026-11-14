@@ -3,4 +3,4 @@
 iw
 rfkill
 wireless-regdb
-wpa_supplicant
+wpasupplicant
