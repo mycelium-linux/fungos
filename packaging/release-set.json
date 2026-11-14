@@ -25,12 +25,12 @@
       "targets": {
         "aarch64-apple-darwin": {
           "archive": "mycelium-v0.1.0-aarch64-apple-darwin.tar.gz",
-          "url": "https://github.com/fungOS-linux/mycelium/releases/download/v0.1.0/mycelium-v0.1.0-aarch64-apple-darwin.tar.gz",
+          "url": "https://github.com/mycelium-linux/mycelium/releases/download/v0.1.0/mycelium-v0.1.0-aarch64-apple-darwin.tar.gz",
           "sha256": "58eea535931f538593ffb2e0ab278621c700f8ea0537c021c5a607c82bb2b9f1"
         },
         "x86_64-unknown-linux-musl": {
           "archive": "mycelium-v0.1.0-x86_64-unknown-linux-musl.tar.gz",
-          "url": "https://github.com/fungOS-linux/mycelium/releases/download/v0.1.0/mycelium-v0.1.0-x86_64-unknown-linux-musl.tar.gz",
+          "url": "https://github.com/mycelium-linux/mycelium/releases/download/v0.1.0/mycelium-v0.1.0-x86_64-unknown-linux-musl.tar.gz",
           "sha256": "e34352e59e7bfeb7d731845de7c569a49b0cf79686707f67a3c48dc76035efcf"
         }
       }

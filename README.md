@@ -6,7 +6,7 @@ Debian-based nodes with explicit boot profiles, secure enrollment and trusted
 software delivery. Mycelium manages identity, topology, access and updates;
 optional edge profiles add Unibus and the native Canvas Wayland compositor.
 
-[Website](https://fungos.dev) · [Website source](https://github.com/ajmwagar/fungos-web) · [Mycelium](https://github.com/ajmwagar/mycelium)
+[Website](https://fungos.dev) · [Website source](https://github.com/mycelium-linux/fungos-web) · [Mycelium](https://github.com/mycelium-linux/mycelium)
 
 ![fungOS edge: native Canvas and two Wayland terminals running in QEMU](docs/screenshots/fungos-workspace.png)
 

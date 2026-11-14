@@ -11,7 +11,7 @@ under `MIT OR Apache-2.0` by the project owner. The original Mycelium working
 tree has not been deleted or rewritten; downstream path migration remains
 separate work.
 
-The public website stays in `ajmwagar/fungos-web`. Screenshots were copied from
+The public website stays in `mycelium-linux/fungos-web`. Screenshots were copied from
 that website's existing public assets, with provenance retained here.
 
 This is a curated source import, not a dump of the development checkout.
