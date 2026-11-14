@@ -88,15 +88,21 @@ if [ "$init" = systemd ]; then
   ln -sfn /usr/lib/systemd/system/ssh.service "$rootfs/etc/systemd/system/multi-user.target.wants/ssh.service"
   ln -sfn /usr/lib/systemd/system/fungos-first-contact.service "$rootfs/etc/systemd/system/multi-user.target.wants/fungos-first-contact.service"
 else
-  # runit: every service shipped under /etc/sv is enabled, and ordering lives
-  # in the run scripts themselves (they wait on the hardware or socket they
-  # need), so there is no separate dependency graph to keep in sync.
-  mkdir -p "$rootfs/etc/service"
-  if [ -d "$rootfs/etc/sv" ]; then
+  # runit: Debian points /etc/service at /etc/runit/runsvdir/current, so the
+  # services are enabled inside that runsvdir. Only the profile's own services
+  # are enabled; the run scripts wait on the hardware, socket or config they
+  # need instead of declaring a dependency graph.
+  runsvdir=default
+  if [ -r "$rootfs/etc/runit/default.runsvdir" ]; then
+    runsvdir=$(tr -d '[:space:]' < "$rootfs/etc/runit/default.runsvdir")
+  fi
+  if [ -d "$base_dir/rootfs-$profile/etc/sv" ]; then
+    mkdir -p "$rootfs/etc/runit/runsvdir/$runsvdir"
     find "$rootfs/etc/sv" -name run -exec chmod 0755 {} +
-    for service in "$rootfs"/etc/sv/*; do
+    for service in "$base_dir/rootfs-$profile"/etc/sv/*; do
       [ -d "$service" ] || continue
-      ln -sfn "/etc/sv/$(basename "$service")" "$rootfs/etc/service/$(basename "$service")"
+      ln -sfn "/etc/sv/$(basename "$service")" \
+        "$rootfs/etc/runit/runsvdir/$runsvdir/$(basename "$service")"
     done
   fi
   printf '# Rewritten at boot by the network service (dhcpcd).\n' > "$rootfs/etc/resolv.conf"
