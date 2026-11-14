@@ -80,7 +80,7 @@ against its pinned SHA-256 before it is extracted.
 | `arch` | `nfpm` | `.pkg.tar.zst`; the AUR recipe is separate. |
 | `aur` | generated `PKGBUILD` | `mycelium-bin` downloads the pinned tarball and verifies its sha256. `.SRCINFO` is generated beside it. |
 | `pkg` | `pkgbuild` + `productbuild` | macOS payload under `/usr/local`; signs with `productsign` when `--sign-identity` is set. |
-| `dmg` | `hdiutil` | Contains the signed product package and a short install note. |
+| `dmg` | `hdiutil` | Ships `fungOS.app` as a drag-install launcher, with the release binaries embedded at `Contents/Resources/bin`, an `/Applications` link, and the `.pkg` for shell access. Needs `--app`. |
 
 `nfpm` is the only extra tool for the Linux formats:
 
@@ -91,6 +91,26 @@ go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 macOS package builds use the Xcode command line tools. `pkgbuild` may preserve
 extended attributes as AppleDouble `._*` entries in the payload; they are
 harmless metadata, and signing/notarization is the next gate.
+
+### macOS: the launcher DMG
+
+The `.dmg` is what macOS users get: `fungOS.app` is the launcher, and the
+release binaries are embedded at `Contents/Resources/bin`, so dragging the app
+to `/Applications` gives a working launcher with its daemon inside the bundle.
+The `.pkg` rides along for anyone who wants `mycelium`, `myceliumd` and the
+other tools on `PATH`.
+
+The app bundle is not a release-set artifact yet, so name it explicitly:
+
+```sh
+scripts/package.sh --formats dmg --target aarch64-apple-darwin \
+  --app /path/to/fungOS.app
+```
+
+Embedding the binaries invalidates whatever signature the bundle arrived with,
+so the `.dmg` step drops `Contents/_CodeSignature`. Sign the assembled bundle
+(Developer ID Application) and the product package (Developer ID Installer)
+before distribution.
 
 ## Signing and promotion
 
@@ -107,9 +127,11 @@ harmless metadata, and signing/notarization is the next gate.
 
 The current release set contains the Mycelium workspace only. Folding in Soil
 (`soil`, `soil-store`, `soil-spore`, `files-serve`, `terminal-host`),
-`fungOS.app`, `iroh-tun`, `fungos-vfs` and `fpl-bob` is additive: publish each
-component's tarball with a checksum, add it to `components`, and extend the
-install lists. The Windows `.exe`/MSI format is intentionally absent until
+`iroh-tun`, `fungos-vfs` and `fpl-bob` is additive: publish each component's
+tarball with a checksum, add it to `components`, and extend the install lists.
+`fungOS.app` is the same shape of gap on macOS: once the bundle is published,
+the `.dmg` step should read it from the release set instead of requiring
+`--app`. The Windows `.exe`/MSI format is intentionally absent until
 Mycelium has a Windows service/RPC/DNS port; a wrapper around the Unix daemon
 would install a service that cannot run.
 

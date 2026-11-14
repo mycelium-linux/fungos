@@ -15,6 +15,7 @@ TARGETS=()
 DRY_RUN=0
 KEEP_WORK=0
 SIGN_IDENTITY=
+APP_BUNDLE=
 NFPM=${NFPM:-nfpm}
 WORK=
 
@@ -33,6 +34,7 @@ Options:
   --artifacts-dir DIR  prefer local archives by basename over downloading
   --out DIR            output directory (default dist/packages)
   --sign-identity ID   Developer ID Installer identity for .pkg/.dmg
+  --app PATH           fungOS.app bundle to ship in the .dmg (required for dmg)
   --dry-run            print the plan; do not download or write packages
   --keep-work          keep the staging directory for inspection
   -h, --help           this text
@@ -59,6 +61,7 @@ parse_args() {
             --artifacts-dir) [ $# -ge 2 ] || die "--artifacts-dir needs a directory"; ARTIFACTS_DIR=$2; shift 2 ;;
             --out) [ $# -ge 2 ] || die "--out needs a directory"; OUT=$2; shift 2 ;;
             --sign-identity) [ $# -ge 2 ] || die "--sign-identity needs a name"; SIGN_IDENTITY=$2; shift 2 ;;
+            --app) [ $# -ge 2 ] || die "--app needs a bundle path"; APP_BUNDLE=$2; shift 2 ;;
             --dry-run) DRY_RUN=1; shift ;;
             --keep-work) KEEP_WORK=1; shift ;;
             -h|--help) usage; exit 0 ;;
@@ -259,8 +262,9 @@ build_pkg() { # target stage
     find "$stage" -name '._*' -delete
     xattr -cr "$stage" 2>/dev/null || true
     component=$pkgdir/$name.pkg
+    # Keep stdout for the artifact path only; pkgbuild/productbuild report there.
     COPYFILE_DISABLE=1 pkgbuild --root "$stage" --identifier "$id" --version "$version" \
-        --install-location / "$component"
+        --install-location / "$component" >&2
     title="$name $version"
     dist=$pkgdir/Distribution.xml
     sed -e "s|@TITLE@|$title|g" \
@@ -270,35 +274,70 @@ build_pkg() { # target stage
         "$ROOT/packaging/macos/Distribution.xml.in" >"$dist"
     output=$OUT/$name-$version-$native.pkg
     mkdir -p "$OUT"
-    productbuild --distribution "$dist" --package-path "$pkgdir" "$output"
+    productbuild --distribution "$dist" --package-path "$pkgdir" "$output" >&2
     if [ -n "$SIGN_IDENTITY" ]; then
         signed=$output.signed
-        productsign --sign "$SIGN_IDENTITY" "$output" "$signed"
+        productsign --sign "$SIGN_IDENTITY" "$output" "$signed" >&2
         mv "$signed" "$output"
     fi
     printf '%s' "$output"
 }
 
-build_dmg() { # target pkg
+build_dmg() { # target pkg stage
     target=$1
     pkg=$2
+    stage=$3
     native=$(target_native_arch "$target") || die "no macOS arch for $target"
+    [ -n "$APP_BUNDLE" ] \
+        || die "dmg needs --app PATH: the launcher bundle is not a release-set artifact"
+    [ -d "$APP_BUNDLE/Contents" ] || die "--app is not an app bundle: $APP_BUNDLE"
+    [ -x "$APP_BUNDLE/Contents/MacOS/canvas-winit" ] \
+        || die "--app has no Contents/MacOS/canvas-winit: $APP_BUNDLE"
+
     dmgdir=$WORK/dmg/$target
     rm -rf "$dmgdir"
     mkdir -p "$dmgdir"
+
+    # The launcher is the product; the package is the shell interface to it.
+    app=$dmgdir/fungOS.app
+    ditto "$APP_BUNDLE" "$app"
+    # The bundle is re-assembled below, so a signature from wherever it was
+    # built no longer covers its contents. Signing happens after this step.
+    rm -rf "$app/Contents/_CodeSignature"
+    xattr -cr "$app" 2>/dev/null || true
+
+    # Ship the release binaries inside the bundle as well, so a drag install
+    # has a working daemon without the package.
+    binres=$app/Contents/Resources/bin
+    mkdir -p "$binres"
+    for binary in "$stage/usr/local/bin"/*; do
+        [ -f "$binary" ] || continue
+        install -m 0755 "$binary" "$binres/$(basename "$binary")"
+    done
     cp "$pkg" "$dmgdir/"
+    ln -s /Applications "$dmgdir/Applications"
+
     cat >"$dmgdir/README.txt" <<EOF
-$name $version
+fungOS $version — launcher
 
-Open $name-$version-$native.pkg to install the Mycelium command line tools
-and services. After installation run:
+1. Drag fungOS to Applications and open it. The launcher shows the Spores
+   installed on this machine.
+2. Install $name-$version-$native.pkg to put the mesh daemon and CLI on PATH
+   (/usr/local/bin). The same binaries also ship inside fungOS.app under
+   Contents/Resources/bin, so the bundle works without the package.
+3. Start the mesh:
 
-  mycelium setup --gateway https://sso.fpl.dev
+     mycelium setup --gateway https://sso.fpl.dev
 
-or redeem a pairing code with --claim.
+   or redeem a pairing code with --claim.
+
+Screens, input and Spore launches stay inside the app; the package only adds
+command-line access.
 EOF
+
+    xattr -cr "$dmgdir" 2>/dev/null || true
     dmgin=$OUT/$name-$version-$native.dmg
-    hdiutil create -quiet -volname "$name $version" -srcfolder "$dmgdir" \
+    hdiutil create -quiet -volname "fungOS $version" -srcfolder "$dmgdir" \
         -ov -format UDZO "$dmgin"
     printf '%s' "$dmgin"
 }
@@ -450,6 +489,9 @@ main() {
             command -v "$tool" >/dev/null 2>&1 || die "$tool is required for pkg/dmg"
         done
     fi
+    if printf '%s\n' "${requested[@]}" | grep -qx dmg && [ -z "$APP_BUNDLE" ]; then
+        die "dmg needs --app PATH (a fungOS.app bundle); the launcher is not a release-set artifact yet"
+    fi
 
     WORK=$(mktemp -d "${TMPDIR:-/tmp}/fungos-package.XXXXXX")
     if [ "$KEEP_WORK" = 1 ]; then
@@ -480,7 +522,7 @@ main() {
                 dmg)
                     pkg=$OUT/$name-$version-$(target_native_arch "$target").pkg
                     [ -f "$pkg" ] || pkg=$(build_pkg "$target" "$stage")
-                    dmg=$(build_dmg "$target" "$pkg")
+                    dmg=$(build_dmg "$target" "$pkg" "$stage")
                     note "wrote $dmg"
                     ;;
             esac

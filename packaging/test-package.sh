@@ -19,6 +19,8 @@ sha256_file() {
 mkdir -p "$WORK/artifacts" "$WORK/src"
 printf '#!/bin/sh\nexit 0\n' >"$WORK/src/mycelium"
 chmod 0755 "$WORK/src/mycelium"
+printf '#!/bin/sh\nexit 0\n' >"$WORK/src/myceliumd"
+chmod 0755 "$WORK/src/myceliumd"
 printf 'test license\n' >"$WORK/src/LICENSE"
 for target in x86_64-unknown-linux-musl aarch64-apple-darwin; do
     tar -C "$WORK/src" -czf "$WORK/artifacts/fake-0.1.0-$target.tar.gz" .
@@ -40,7 +42,7 @@ cat >"$WORK/release-set.json" <<EOF
     {
       "name": "mycelium",
       "version": "0.1.0",
-      "binaries": ["mycelium"],
+      "binaries": ["mycelium", "myceliumd"],
       "licenses": ["LICENSE"],
       "targets": {
         "x86_64-unknown-linux-musl": {
@@ -77,15 +79,35 @@ else
 fi
 
 if [ "$(uname -s)" = Darwin ]; then
+    mkdir -p "$WORK/fungOS.app/Contents/MacOS" "$WORK/fungOS.app/Contents/Resources"
+    printf '#!/bin/sh\nexit 0\n' >"$WORK/fungOS.app/Contents/MacOS/canvas-winit"
+    chmod 0755 "$WORK/fungOS.app/Contents/MacOS/canvas-winit"
+    : >"$WORK/fungOS.app/Contents/Resources/launcher.wasm"
     "$ROOT/scripts/package.sh" --release-set "$WORK/release-set.json" \
-        --formats pkg,dmg --target aarch64-apple-darwin \
+        --formats pkg,dmg --target aarch64-apple-darwin --app "$WORK/fungOS.app" \
         --artifacts-dir "$WORK/artifacts" --out "$WORK/mac" >/dev/null
     pkg="$WORK/mac/mycelium-0.1.0-arm64.pkg"
     [ -f "$pkg" ] || fail "pkg was not written"
     pkgutil --payload-files "$pkg" | grep -q './usr/local/bin/mycelium' \
         || fail "pkg payload is missing mycelium"
-    [ -f "$WORK/mac/mycelium-0.1.0-arm64.dmg" ] || fail "dmg was not written"
-    ok "builds a macOS pkg and dmg"
+    dmg="$WORK/mac/mycelium-0.1.0-arm64.dmg"
+    [ -f "$dmg" ] || fail "dmg was not written"
+
+    # The dmg is the launcher: app with the daemon inside, Applications link,
+    # and the package for shell access.
+    mountpoint="$WORK/dmg-mount"
+    mkdir -p "$mountpoint"
+    hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mountpoint" "$dmg"
+    trap 'hdiutil detach -quiet "$mountpoint" 2>/dev/null || true' EXIT
+    [ -x "$mountpoint/fungOS.app/Contents/Resources/bin/myceliumd" ] \
+        || fail "dmg app is missing myceliumd"
+    [ -x "$mountpoint/fungOS.app/Contents/MacOS/canvas-winit" ] \
+        || fail "dmg app is missing canvas-winit"
+    [ -L "$mountpoint/Applications" ] || fail "dmg has no Applications link"
+    [ -f "$mountpoint/$(basename "$pkg")" ] || fail "dmg is missing the pkg"
+    hdiutil detach -quiet "$mountpoint"
+    trap - EXIT
+    ok "builds a macOS pkg and a launcher dmg"
 else
     printf 'skip - pkg/dmg needs macOS\n'
 fi
