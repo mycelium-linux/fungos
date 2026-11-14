@@ -17,4 +17,4 @@ Debian's `xcursor-themes`; their license notices remain in the guest's
 `/usr/share/doc/xcursor-themes/copyright`.
 
 Original public assets and notices:
-[ajmwagar/fungos-web](https://github.com/ajmwagar/fungos-web/blob/main/ASSET-NOTICES.md).
+[mycelium-linux/fungos-web](https://github.com/mycelium-linux/fungos-web/blob/main/ASSET-NOTICES.md).
