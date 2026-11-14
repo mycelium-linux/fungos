@@ -70,13 +70,16 @@ find "$rootfs/var/lib/apt/lists" -maxdepth 1 -type f -name '*InRelease' -exec cp
 [ "$(find "$release_inputs" -type f -name '*InRelease' | wc -l)" -eq 3 ] || { echo 'expected three authenticated archive releases' >&2; exit 1; }
 (cd "$release_inputs" && sha256sum *InRelease) > "$release_inputs/SHA256SUMS"
 
+# The services Debian itself ships stay as they are; anything the profile
+# overlay or a runtime component adds is enabled below. The snapshot has to be
+# taken before the overlay lands, or the overlay's own services are mistaken for
+# Debian's and never enabled.
+base_services=$(ls "$rootfs/etc/sv" 2>/dev/null || true)
+
 sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs" "$rootfs"
 if [ -d "$base_dir/rootfs-$profile" ]; then
   sh "$base_dir/scripts/apply-overlay.sh" "$base_dir/rootfs-$profile" "$rootfs"
 fi
-# The services Debian itself ships stay as they are; anything that appears
-# later (profile overlay, runtime component) is enabled below.
-base_services=$(ls "$rootfs/etc/sv" 2>/dev/null || true)
 # Runtime components are owner-built .debs (see packages/COMPONENTS.md), not
 # overlay payloads: unpack them so their files land like a package would,
 # without running maintainer scripts.
