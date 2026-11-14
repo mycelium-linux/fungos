@@ -6,4 +6,7 @@ mkdir -p /mnt/userdata
 mountpoint -q /mnt/userdata 2>/dev/null || \
 	mount -t f2fs /dev/mmcblk0p56 /mnt/userdata || echo "userdata: mount failed"
 mkdir -p /mnt/userdata/cat-s22-data
+# If the image already has a /data directory, ln -sfn would create the link
+# inside it and every path under /data would resolve to nothing.
+[ -d /data ] && [ ! -L /data ] && rmdir /data 2>/dev/null
 ln -sfn /mnt/userdata/cat-s22-data /data
