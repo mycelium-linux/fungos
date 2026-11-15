@@ -1,0 +1,20 @@
+#!/bin/sh
+exec 2>&1
+# `mycelium setup` writes the node identity; until it has, there is nothing to
+# serve. The packaged systemd unit gates on the same two paths, and a service
+# that starts without them crash-loops instead of waiting.
+while [ ! -f /var/lib/mycelium/node.env ] ||
+      [ ! -f /var/lib/mycelium/pki/node-key.pem ]; do
+    sleep 5
+done
+# `_serve` is the daemon the packaged unit runs in the foreground. The operator
+# command `mycelium daemon start` forks, which runit would supervise as a
+# process that exited immediately -- that mismatch is what crash-looped here
+# before.
+#
+# Joining the fleet is a separate, deliberate step: stage the claim the fleet
+# gave you at /run/fungos-first-contact/claim, then run
+# `mycelium setup --packaged --claim-file /run/fungos-first-contact/claim`
+# once. It is not a service, because a consumed claim must not be retried on
+# every boot.
+exec /usr/bin/mycelium _serve
