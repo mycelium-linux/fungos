@@ -66,3 +66,24 @@ If enrollment fails, inspect the journal, networkd state, the non-secret
 environment file, and adapter permissions. The runner fails loudly when zero
 or multiple adapters exist. Remove stale adapters rather than selecting one by
 filesystem order.
+
+### Never extract an archive into `/`
+
+The image uses the merged-`/usr` layout: `/bin`, `/sbin`, `/lib`, and `/lib64`
+are symlinks into `/usr`. Extracting a tarball whose members begin at `lib/`
+replaces the `/lib` symlink with a real directory. The dynamic loader then
+cannot resolve `libc.so.6` and every new process fails before it can print an
+error, including the shell you would use to fix it.
+
+Recovery needs an already-running shell (the console service is normally one).
+Invoke the loader explicitly, because no binary starts on its own until the
+link is back:
+
+```sh
+/usr/lib/ld-linux-aarch64.so.1 /usr/bin/mv /lib /lib.real
+/usr/lib/ld-linux-aarch64.so.1 /usr/bin/ln -s usr/lib /lib
+```
+
+Check `/bin` and `/sbin` the same way; a tarball with `bin/` members breaks
+them identically. Unpack third-party archives into a staging directory and
+copy out the pieces you want instead of extracting at the filesystem root.
