@@ -17,4 +17,11 @@ done
 # `mycelium setup --packaged --claim-file /run/fungos-first-contact/claim`
 # once. It is not a service, because a consumed claim must not be retried on
 # every boot.
+#
+# node.env carries the site, the mesh listener, and the seed peers. The packaged
+# systemd unit passes it as an EnvironmentFile; runit has no such mechanism, so
+# export it here or the daemon starts with no site and no peers to dial.
+set -a
+. /var/lib/mycelium/node.env
+set +a
 exec /usr/bin/mycelium _serve
