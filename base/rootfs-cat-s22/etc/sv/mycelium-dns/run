@@ -1,0 +1,16 @@
+#!/bin/sh
+exec 2>&1
+# The resolver resolves its state directory from $HOME/.mycelium and ignores
+# MYCELIUM_HOME, so the packaged state dir has to be reachable through root's
+# home. Drop this indirection once the resolver honours MYCELIUM_HOME.
+if [ ! -L /root/.mycelium ]; then
+    [ -e /root/.mycelium ] && mv /root/.mycelium /root/.mycelium.pre-packaged 2>/dev/null
+    ln -s /var/lib/mycelium /root/.mycelium
+fi
+# `mycelium dns resolver init --write` writes the settings; until it has, there
+# is no zone to serve and the resolver would fail on every start.
+while [ ! -f /var/lib/mycelium/dns/active-settings.json ]; do
+    sleep 5
+done
+exec /usr/bin/mycelium dns resolver run \
+    --config /var/lib/mycelium/dns/active-settings.json --write
