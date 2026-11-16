@@ -6,9 +6,21 @@
 # where the driver looks, then start the remoteproc -- wcn36xx is built into the
 # kernel and binds the `wifi` child node once the firmware is running.
 set -u
+# udev does not run here, so /dev/disk/by-partlabel is empty even though the GPT
+# has the names. The kernel exposes the same name per partition.
+partition() {
+    for uevent in /sys/class/block/mmcblk0p*/uevent; do
+        grep -q "^PARTNAME=$1\$" "$uevent" 2>/dev/null || continue
+        echo "/dev/$(basename "$(dirname "$uevent")")"
+        return 0
+    done
+    return 1
+}
 for part in modem persist; do
     mkdir -p "/mnt/$part"
-    mountpoint -q "/mnt/$part" || mount -o ro "/dev/disk/by-partlabel/$part" "/mnt/$part" 2>/dev/null
+    mountpoint -q "/mnt/$part" && continue
+    device=$(partition "$part") || continue
+    mount -o ro "$device" "/mnt/$part" 2>/dev/null
 done
 
 if [ -d /mnt/modem/image ]; then
