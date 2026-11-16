@@ -1,8 +1,10 @@
 #!/bin/sh
 exec 2>&1
-# The resolver resolves its state directory from $HOME/.mycelium and ignores
-# MYCELIUM_HOME, so the packaged state dir has to be reachable through root's
-# home. Drop this indirection once the resolver honours MYCELIUM_HOME.
+# runsv does not export HOME, and the resolver resolves its state directory
+# from $HOME/.mycelium and ignores MYCELIUM_HOME. Pin HOME and make the
+# packaged state dir reachable through it; drop both once the resolver honours
+# MYCELIUM_HOME.
+export HOME=/root
 if [ ! -L /root/.mycelium ]; then
     [ -e /root/.mycelium ] && mv /root/.mycelium /root/.mycelium.pre-packaged 2>/dev/null
     ln -s /var/lib/mycelium /root/.mycelium
