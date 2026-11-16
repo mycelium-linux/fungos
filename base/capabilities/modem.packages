@@ -3,3 +3,8 @@
 rmtfs
 libqrtr1
 qrtr-tools
+# QMI client over QRTR: qmicli opens the DPM port, python3-gi runs the
+# bind-mux/start-network pair that has to share one WDS client (lte-connect.py).
+libqmi-utils
+python3-gi
+gir1.2-qmi-1.0
