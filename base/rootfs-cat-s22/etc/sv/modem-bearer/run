@@ -1,0 +1,14 @@
+#!/bin/sh
+# Hold the LTE bearer up.
+#
+# The data path only exists while this process holds the WDS client: when it
+# exits, the modem tears the call down and `wwan0` goes away. So it is not a
+# setup script, it is a service — runsv restarts it if the modem resets, and
+# stopping the service is how you take LTE down.
+#
+# `--hold` is a year because the flag means "how long to keep the bearer after
+# it comes up", and for a supervised instance the answer is "until you stop
+# me". It re-arms on every successful re-connect, so a modem reset does not
+# spend the budget.
+exec 2>&1
+exec /usr/local/bin/hyphae-modem --apn fast.t-mobile.com --hold 31536000

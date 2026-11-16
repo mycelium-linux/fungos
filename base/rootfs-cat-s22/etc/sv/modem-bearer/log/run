@@ -1,0 +1,4 @@
+#!/bin/sh
+# svlogd for modem-bearer: the bearer's progress and failures have to survive
+# the process, and until this existed `sv status` was the only evidence.
+exec svlogd -tt /var/log/modem-bearer
