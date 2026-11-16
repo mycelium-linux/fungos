@@ -17,3 +17,9 @@ done
 pkill -x wpa_supplicant 2>/dev/null
 wpa_supplicant -B -i wlan0 -c "$conf" -D nl80211 >/dev/null 2>&1
 dhcpcd -t 20 wlan0 >/dev/null 2>&1
+
+# The radio sleeps between beacons by default: measured 14-96 ms round trips on
+# a -50 dBm link, against 1-10 ms for the same AP from the Mac. wpa_supplicant
+# re-enables power save when it associates, so turn it off after that, not
+# before. This is what makes an SSH session over wlan0 usable.
+iw dev wlan0 set power_save off 2>/dev/null
