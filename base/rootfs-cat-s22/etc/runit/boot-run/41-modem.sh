@@ -42,3 +42,19 @@ for r in /sys/class/remoteproc/*/; do
     [ "$(cat "$r/state" 2>/dev/null)" = "offline" ] || continue
     echo start > "$r/state" 2>/dev/null
 done
+
+# Bind bam-dmux the moment the firmware is up, not whenever the deferred-probe
+# list gets around to it. The modem asks the AP for a power collapse as part of
+# its own initialization and waits for the acknowledgement; if this driver is
+# not bound yet there is nobody to answer, and the modem's own watchdog fires
+# ("dog.c: Watchdog detects stalled initialization") a minute or two later.
+i=0
+while [ "$i" -lt 40 ]; do
+    if [ -e /sys/bus/platform/devices/4080000.remoteproc:bam-dmux ] &&
+       [ ! -e /sys/bus/platform/devices/4080000.remoteproc:bam-dmux/driver ]; then
+        echo 4080000.remoteproc:bam-dmux > /sys/bus/platform/drivers/bam-dmux/bind 2>/dev/null
+    fi
+    [ -e /sys/bus/platform/devices/4080000.remoteproc:bam-dmux/driver ] && break
+    i=$((i + 1))
+    sleep 0.5
+done
