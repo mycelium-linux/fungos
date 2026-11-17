@@ -1,0 +1,4 @@
+#!/bin/sh
+# svlogd for soil: the presenter's log is the only record of why a frame
+# failed, and until this existed it went to the console and was lost.
+exec svlogd -tt /var/log/soil

@@ -1,0 +1,22 @@
+#!/bin/sh
+# ohmOS on the inner panel.
+#
+# One frame loop: the guest draws RGBA, the host writes it into the panel's
+# framebuffer. The grants are what make the screens real -- `--collection
+# personal` maps to the records book this phone syncs, so contacts come from
+# the owner's book instead of a sample.
+#
+# The package is not built here: it is a 21 MB wasm component packed with
+# `tend pack`, and it has to be staged at /etc/soil/ohmos.spore. Without it
+# this service has nothing to run and exits, which is why the wait is loud.
+exec 2>&1
+while [ ! -f /etc/soil/ohmos.spore ]; do
+	echo "soil: waiting for /etc/soil/ohmos.spore (21 MB canvas component; build it"
+	echo "soil:   with `cargo build --release --target wasm32-wasip2 -p ohmos-canvas-spore`"
+	echo "soil:   then `tend pack crates/ohmos-canvas-spore -o /etc/soil/ohmos.spore`)"
+	sleep 30
+done
+exec /usr/bin/soil --root /var/lib/soil spore run /etc/soil/ohmos.spore \
+	--fb /dev/fb0 --size 480x640 --keys /dev/input/event0 \
+	--records /root/.local/share/fungos/records --collection personal \
+	--book personal/avery/contacts

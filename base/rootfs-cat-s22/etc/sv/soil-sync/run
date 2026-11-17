@@ -1,0 +1,9 @@
+#!/bin/sh
+# Hold the phone in the records mesh.
+#
+# The daemon is one process per machine: it serves this phone's books to the
+# peers its trust document admits, and pulls what they have. It has to outlive
+# the shell that first started it, or a reboot silently takes the phone out of
+# the mesh -- which is what happened before this service existed.
+exec 2>&1
+exec /usr/local/bin/soil-sync run --config /root/.config/fungos/soil-sync/records-cat-s22.json
