@@ -19,3 +19,4 @@ artifacts/
 *.log
 .DS_Store
 ._*
+.worktrees/

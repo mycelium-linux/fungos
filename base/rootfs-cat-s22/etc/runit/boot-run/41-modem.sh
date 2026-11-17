@@ -11,13 +11,24 @@ set -u
 # udev does not run here, so /dev/disk/by-partlabel is empty. The kernel still
 # exposes the GPT name per partition, which is the same information.
 modem_part=
-for uevent in /sys/class/block/mmcblk0p*/uevent; do
-    grep -q '^PARTNAME=modem$' "$uevent" 2>/dev/null || continue
-    block=$(basename "$(dirname "$uevent")")
-    modem_part="/dev/$block"
-    break
+# The same boot race 40-wcnss.sh has: at stage 1 the partition nodes may not be
+# there yet, and exiting quietly here means no modem for the rest of the boot.
+i=0
+while [ "$i" -lt 30 ]; do
+    for uevent in /sys/class/block/mmcblk0p*/uevent; do
+        grep -q '^PARTNAME=modem$' "$uevent" 2>/dev/null || continue
+        block=$(basename "$(dirname "$uevent")")
+        modem_part="/dev/$block"
+        break
+    done
+    [ -n "$modem_part" ] && break
+    sleep 1
+    i=$((i + 1))
 done
-[ -n "$modem_part" ] || exit 0
+[ -n "$modem_part" ] || {
+    echo "modem: no modem partition after ${i}s" > /dev/kmsg
+    exit 0
+}
 
 mkdir -p /mnt/modem
 mountpoint -q /mnt/modem || mount -o ro "$modem_part" /mnt/modem 2>/dev/null

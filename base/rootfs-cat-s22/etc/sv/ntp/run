@@ -1,0 +1,48 @@
+#!/bin/sh
+# Step the clock from the network, and keep stepping it.
+#
+# This kernel has no adjtimex, so no NTP daemon can discipline the clock -- it
+# can only be stepped. That makes the schedule simple and the wait important:
+# the phone has no RTC, so until this runs the clock is 1970 and every timestamp
+# written in between (logs, records, the launcher's status bar) is wrong.
+#
+# "The network is up" is two facts, not one. A default route appears the moment
+# DHCP lands, but ntpdate also needs a resolver, and at boot neither exists yet.
+# Waiting for both is what turned a silent 1970 into a clock that is right a few
+# seconds after the link comes up.
+#
+# Output goes straight to a file rather than through svlogd: this service is the
+# only writer, the file is one line per attempt, and a log service that fails to
+# start would take the evidence with it.
+mkdir -p /var/log
+exec >>/var/log/ntp.log 2>&1
+POOL=${NTP_POOL:-pool.ntp.org}
+
+say() {
+	echo "ntp: $*"
+}
+
+ready() {
+	ip route show default 2>/dev/null | grep -q . || return 1
+	getent hosts "$POOL" >/dev/null 2>&1 || return 1
+	return 0
+}
+
+waited=0
+until ready; do
+	sleep 2
+	waited=$((waited + 2))
+	# Say it once a minute: a boot with no network should say so in the log
+	# without filling it.
+	[ $((waited % 60)) -eq 0 ] && say "waiting for a route and a resolver (${waited}s)"
+done
+say "network up after ${waited}s"
+
+while :; do
+	if out=$(/usr/sbin/ntpdate -b -u "$POOL" 2>&1); then
+		say "stepped: $(echo "$out" | tr '\n' ' ')"
+	else
+		say "step failed: $(echo "$out" | tr '\n' ' ')"
+	fi
+	sleep 900
+done

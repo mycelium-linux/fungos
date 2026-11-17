@@ -16,10 +16,23 @@ partition() {
     done
     return 1
 }
+# Stage 1 runs before udev and, on a cold boot, before the mmc partitions are
+# necessarily enumerated: the partlabel lookup then finds nothing and this
+# script used to continue with no firmware, leaving WCNSS offline and the phone
+# with no WiFi at all. Wait for the block devices rather than assume them.
+i=0
+while [ "$i" -lt 30 ] && ! partition modem >/dev/null; do
+    sleep 1
+    i=$((i + 1))
+done
+
 for part in modem persist; do
     mkdir -p "/mnt/$part"
     mountpoint -q "/mnt/$part" && continue
-    device=$(partition "$part") || continue
+    device=$(partition "$part") || {
+        echo "wcnss: no $part partition after ${i}s; firmware not staged" > /dev/kmsg
+        continue
+    }
     mount -o ro "$device" "/mnt/$part" 2>/dev/null
 done
 
