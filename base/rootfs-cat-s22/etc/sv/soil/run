@@ -17,6 +17,6 @@ while [ ! -f /etc/soil/ohmos.spore ]; do
 	sleep 30
 done
 exec /usr/bin/soil --root /var/lib/soil spore run /etc/soil/ohmos.spore \
-	--fb /dev/fb0 --size 480x640 --keys /dev/input/event0 \
+	--fb /dev/fb0 --size 480x640 --input /dev/input/event0 \
 	--records /root/.local/share/fungos/records --collection personal \
 	--book personal/avery/contacts
